@@ -1,0 +1,592 @@
+/**
+ * GL Rules App - CSS Variables and Component Styles
+ *
+ * App-specific CSS variables extending the JetSetGo design system
+ * All variables are namespaced with --gl-rules- or --jsg-gl-rules-
+ *
+ * Timeline styling matched to jsg_pricing app
+ */
+
+:root {
+  /* ========================================
+   * Global Variable Aliases (required by shared components)
+   * ======================================== */
+
+  /* These aliases are required by the Timeline shared component */
+  --color-bg: var(--color-surface-primary, #ffffff);
+  --color-text-muted: var(--color-text-secondary, #6b7280);
+  --color-primary: #2563eb;
+  --color-border: #e5e7eb;
+  --color-warning-500: #f59e0b;
+
+  /* ========================================
+   * Priority Colors (Rule Type Indicators)
+   * ======================================== */
+
+  /* Priority 1: Resource (Highest) - Red/Orange */
+  --gl-rules-priority-1-bg: var(--badge-error-bg, #fef2f2);
+  --gl-rules-priority-1-text: var(--badge-error-text, #dc2626);
+  --gl-rules-priority-1-border: var(--color-error-500, #ef4444);
+  --gl-rules-priority-1-icon: var(--color-error-600, #dc2626);
+
+  /* Priority 2: Product Sub-Type (High) - Yellow */
+  --gl-rules-priority-2-bg: var(--badge-warning-bg, #fffbeb);
+  --gl-rules-priority-2-text: var(--badge-warning-text, #d97706);
+  --gl-rules-priority-2-border: var(--color-warning-500, #f59e0b);
+  --gl-rules-priority-2-icon: var(--color-warning-600, #d97706);
+
+  /* Priority 3: Product Type (Medium) - Blue */
+  --gl-rules-priority-3-bg: var(--badge-info-bg, #eff6ff);
+  --gl-rules-priority-3-text: var(--badge-info-text, #2563eb);
+  --gl-rules-priority-3-border: var(--color-info-500, #3b82f6);
+  --gl-rules-priority-3-icon: var(--color-info-600, #2563eb);
+
+  /* Priority 4: Default (Fallback) - Gray */
+  --gl-rules-priority-4-bg: var(--badge-neutral-bg, #f3f4f6);
+  --gl-rules-priority-4-text: var(--badge-neutral-text, #4b5563);
+  --gl-rules-priority-4-border: var(--color-neutral-400, #9ca3af);
+  --gl-rules-priority-4-icon: var(--color-neutral-500, #6b7280);
+
+  /* ========================================
+   * Component Spacing
+   * ======================================== */
+
+  /* Gap between account cards in list */
+  --gl-rules-card-gap: var(--spacing-4, 1rem);
+
+  /* Gap between rules in editor */
+  --gl-rules-rule-gap: var(--spacing-3, 0.75rem);
+
+  /* Gap between major sections */
+  --gl-rules-section-gap: var(--spacing-6, 1.5rem);
+
+  /* Gap between form fields */
+  --gl-rules-field-gap: var(--spacing-4, 1rem);
+
+  /* ========================================
+   * Container Padding
+   * ======================================== */
+
+  /* Modal editor padding */
+  --gl-rules-modal-padding: var(--spacing-6, 1.5rem);
+
+  /* Account card internal padding */
+  --gl-rules-card-padding: var(--spacing-card-padding, 1.5rem);
+
+  /* Rule item internal padding */
+  --gl-rules-rule-padding: var(--spacing-4, 1rem);
+
+  /* ========================================
+   * Visual Elements
+   * ======================================== */
+
+  /* Rule item left border width (priority indicator) */
+  --gl-rules-rule-border-width: 4px;
+
+  /* ========================================
+   * Timeline Variables (required by shared Timeline component)
+   * These MUST match the jsg_pricing app's variables
+   * ======================================== */
+
+  /* Timeline layout dimensions - MUST match jsg_pricing values */
+  --jsg-pricing-timeline-min-height: 600px;
+  --jsg-pricing-timeline-month-width: 10rem;
+  --jsg-pricing-timeline-lane-min-width: 13.75rem;
+  --jsg-pricing-timeline-lane-max-width: 21.25rem;
+  --jsg-pricing-timeline-version-height: 60px;
+  --jsg-pricing-timeline-gap-min-height: 40px;
+  --jsg-pricing-timeline-scroll-padding: 1.5rem;
+  --jsg-pricing-timeline-version-row-height: 40px;
+  --jsg-pricing-timeline-version-gap: 8px;
+  --jsg-pricing-timeline-month-label-width: 7.5rem; /* 120px - wider to fit Today badge + month label */
+  --jsg-pricing-timeline-month-dot-width: 1.5rem;
+  --jsg-pricing-timeline-today-badge-min-width: 2.75rem; /* 44px - ensures Today text fits */
+
+  /* Timeline minimum height */
+  --timeline-min-height: 600px;
+  --timeline-lane-min-width: 300px;
+
+  /* Month header styling */
+  --jsg-pricing-month-header-bg: var(--color-background, #f9fafb);
+  --jsg-pricing-month-header-border: var(--color-border, #e5e7eb);
+  --jsg-pricing-month-header-text: var(--color-text-primary, #111827);
+  --jsg-pricing-month-current-bg: #eff6ff;
+  --jsg-pricing-month-current-border: var(--color-primary-500, #3b82f6);
+  --jsg-pricing-month-current-text: var(--color-primary-700, #1d4ed8);
+  --jsg-pricing-month-hover-bg: #f5f9ff;
+
+  /* Today marker - using orange/red color like pricing app */
+  --jsg-pricing-today-marker-bg: #ef4444;
+  --jsg-pricing-today-marker-color: var(--color-error-500, #ef4444);
+  --jsg-pricing-today-marker-width: 2px;
+  --jsg-pricing-today-marker-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+
+  /* Version card styling */
+  --jsg-pricing-version-bg: #ffffff;
+  --jsg-pricing-version-border: var(--color-border, #e5e7eb);
+  --jsg-pricing-version-border-width: 2px;
+  --jsg-pricing-version-border-radius: var(--radius-lg, 0.5rem);
+  --jsg-pricing-version-padding: var(--spacing-3, 0.75rem);
+  --jsg-pricing-version-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  --jsg-pricing-version-shadow-hover: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+
+  /* Version active state */
+  --jsg-pricing-version-active-bg: #eff6ff;
+  --jsg-pricing-version-active-border: var(--color-primary-300, #93c5fd);
+  --jsg-pricing-version-active-hover-bg: #dbeafe;
+  --jsg-pricing-version-active-hover-border: var(--color-primary-400, #60a5fa);
+
+  /* Version expired state */
+  --jsg-pricing-version-expired-bg: #f9fafb;
+  --jsg-pricing-version-expired-border: #d1d5db;
+  --jsg-pricing-version-expired-text: var(--color-text-secondary, #6b7280);
+
+  /* Version draft state */
+  --jsg-pricing-version-draft-bg: #fffbeb;
+  --jsg-pricing-version-draft-border: #fcd34d;
+  --jsg-pricing-version-draft-text: var(--color-warning-500, #f59e0b);
+
+  /* Version future state */
+  --jsg-pricing-version-future-bg: #eff6ff;
+  --jsg-pricing-version-future-border: #93c5fd;
+  --jsg-pricing-version-future-text: var(--color-info-500, #3b82f6);
+
+  /* Animation duration */
+  --jsg-pricing-version-animation-duration: 300ms;
+
+  /* Lane styling */
+  --jsg-pricing-timeline-lane-border: #d1d5db;
+  --jsg-pricing-timeline-lane-bg: #ffffff;
+
+  /* Edit/Delete Action Buttons - matching pricing app */
+  --jsg-pricing-edit-button-bg: white;
+  --jsg-pricing-edit-button-border: var(--color-border, #e5e7eb);
+  --jsg-pricing-edit-button-hover-border: var(--color-primary-300, #93c5fd);
+  --jsg-pricing-edit-button-hover-text: var(--color-primary-500, #3b82f6);
+  --jsg-pricing-delete-button-hover-border: var(--color-error-300, #fca5a5);
+  --jsg-pricing-delete-button-hover-text: var(--color-error-500, #ef4444);
+
+  /* Gap indicator styling */
+  --jsg-pricing-gap-bg: transparent;
+  --jsg-pricing-gap-border: 2px dashed var(--color-border, #e5e7eb);
+  --jsg-pricing-gap-hover-bg: #f0fdf4;
+  --jsg-pricing-gap-hover-border: var(--color-success-500, #10b981);
+  --jsg-pricing-gap-button-bg: var(--color-success-500, #10b981);
+  --jsg-pricing-gap-button-text: white;
+  --jsg-pricing-gap-button-hover-bg: #059669;
+
+  /* Text styling */
+  --jsg-pricing-text-muted: var(--color-text-secondary, #6b7280);
+  --jsg-pricing-timeline-empty-text: var(--color-text-secondary, #6b7280);
+  --jsg-pricing-timeline-add-button-icon: var(--color-primary-600, #2563eb);
+
+  /* Hover transition */
+  --jsg-pricing-hover-transition: all 150ms ease-out;
+
+  /* ========================================
+   * Animation Timing
+   * ======================================== */
+
+  /* Fast transitions (hover, focus) */
+  --gl-rules-transition-fast: 150ms ease-out;
+
+  /* Medium transitions (expand/collapse) */
+  --gl-rules-transition-medium: 250ms ease-out;
+
+  /* Slow transitions (modal, page) */
+  --gl-rules-transition-slow: 300ms ease-out;
+
+  /* ========================================
+   * Icon Sizes
+   * ======================================== */
+
+  --gl-rules-icon-sm: 16px;
+  --gl-rules-icon-md: 20px;
+  --gl-rules-icon-lg: 24px;
+  --gl-rules-icon-xl: 48px;
+}
+
+/* ========================================
+ * Priority Badge Styles
+ * ======================================== */
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-badge, 0.25rem);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.priority-badge--resource {
+  background-color: var(--gl-rules-priority-1-bg);
+  color: var(--gl-rules-priority-1-text);
+}
+
+.priority-badge--product-sub-type {
+  background-color: var(--gl-rules-priority-2-bg);
+  color: var(--gl-rules-priority-2-text);
+}
+
+.priority-badge--product-type {
+  background-color: var(--gl-rules-priority-3-bg);
+  color: var(--gl-rules-priority-3-text);
+}
+
+.priority-badge--default {
+  background-color: var(--gl-rules-priority-4-bg);
+  color: var(--gl-rules-priority-4-text);
+}
+
+/* ========================================
+ * Rule Item Styles
+ * ======================================== */
+
+.rule-item {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-card, 0.5rem);
+  padding: var(--gl-rules-rule-padding);
+  margin-bottom: var(--gl-rules-rule-gap);
+  background: #ffffff;
+}
+
+.rule-item--resource {
+  border-left: var(--gl-rules-rule-border-width) solid var(--gl-rules-priority-1-border);
+}
+
+.rule-item--product-sub-type {
+  border-left: var(--gl-rules-rule-border-width) solid var(--gl-rules-priority-2-border);
+}
+
+.rule-item--product-type {
+  border-left: var(--gl-rules-rule-border-width) solid var(--gl-rules-priority-3-border);
+}
+
+.rule-item--default {
+  border-left: var(--gl-rules-rule-border-width) solid var(--gl-rules-priority-4-border);
+}
+
+/* ========================================
+ * Account Card Styles
+ * ======================================== */
+
+.account-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  padding: 1.5rem !important;
+  background: #ffffff !important;
+  transition: box-shadow 150ms ease-out !important;
+}
+
+.account-card:hover {
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1)) !important;
+}
+
+/* ========================================
+ * GL Rules App Layout
+ * ======================================== */
+
+.gl-rules-app {
+  padding: 1.5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ========================================
+ * Empty State Styles
+ * ======================================== */
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.empty-state__icon {
+  width: var(--gl-rules-icon-xl);
+  height: var(--gl-rules-icon-xl);
+  color: var(--color-text-tertiary, #9ca3af);
+  margin: 0 auto 1rem;
+}
+
+.empty-state__heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state__description {
+  font-size: 1rem;
+  color: var(--color-text-secondary, #6b7280);
+  max-width: 480px;
+  margin: 0 auto 1rem;
+}
+
+/* ========================================
+ * Button Styles
+ * ======================================== */
+
+.btn-danger {
+  background-color: var(--color-error-600, #dc2626) !important;
+  color: white !important;
+  border: none !important;
+  transition: background-color 150ms ease-out !important;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-error-700, #b91c1c) !important;
+}
+
+.btn-danger:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+}
+
+/* ========================================
+ * Timeline Component Styles
+ * These override the shared Timeline component's default styles
+ * ======================================== */
+
+/* Timeline container */
+.timeline-container {
+  min-height: var(--jsg-pricing-timeline-min-height, 600px);
+  padding: var(--jsg-pricing-timeline-scroll-padding, 1.5rem);
+}
+
+/* Timeline month styling */
+.timeline-month {
+  width: var(--jsg-pricing-timeline-month-width, 8rem);
+  background-color: var(--jsg-pricing-month-header-bg, #f9fafb);
+  border: 1px solid var(--jsg-pricing-month-header-border, #e5e7eb);
+  color: var(--jsg-pricing-month-header-text, #111827);
+  transition: var(--jsg-pricing-hover-transition, all 150ms ease-out);
+}
+
+.timeline-month-current {
+  background-color: var(--jsg-pricing-month-current-bg, #eff6ff);
+  border-color: var(--jsg-pricing-month-current-border, #3b82f6);
+  color: var(--jsg-pricing-month-current-text, #1d4ed8);
+  font-weight: 500;
+}
+
+/* Timeline lane styling */
+.timeline-lane {
+  min-width: var(--jsg-pricing-timeline-lane-min-width, 13.75rem);
+}
+
+/* Timeline version cards - CRITICAL STYLING */
+.timeline-version {
+  background-color: #ffffff !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: all 300ms ease-out !important;
+}
+
+.timeline-version:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  border-color: #93c5fd !important;
+}
+
+/* Active version styling - light blue background matching pricing app */
+.timeline-version-active {
+  background-color: #eff6ff !important;
+  border: 2px solid #93c5fd !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem !important;
+}
+
+.timeline-version-active:hover {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Hide edit/delete action buttons until hover */
+.group .opacity-0 {
+  opacity: 0 !important;
+}
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1 !important;
+}
+
+/* Expired version styling */
+.timeline-version-expired {
+  background-color: var(--jsg-pricing-version-expired-bg, #f9fafb) !important;
+  border-color: var(--jsg-pricing-version-expired-border, #d1d5db) !important;
+  color: var(--jsg-pricing-version-expired-text, #6b7280) !important;
+}
+
+/* Draft version styling */
+.timeline-version-draft {
+  background-color: var(--jsg-pricing-version-draft-bg, #fffbeb) !important;
+  border-color: var(--jsg-pricing-version-draft-border, #fcd34d) !important;
+  color: var(--jsg-pricing-version-draft-text, #f59e0b) !important;
+}
+
+/* Future version styling */
+.timeline-version-future {
+  background-color: var(--jsg-pricing-version-future-bg, #eff6ff) !important;
+  border-color: var(--jsg-pricing-version-future-border, #93c5fd) !important;
+  color: var(--jsg-pricing-version-future-text, #3b82f6) !important;
+}
+
+/* Gap indicators */
+.timeline-gap {
+  background-color: var(--jsg-pricing-gap-bg, transparent);
+  border: var(--jsg-pricing-gap-border, 2px dashed #e5e7eb);
+  min-height: var(--jsg-pricing-timeline-gap-min-height, 40px);
+  transition: var(--jsg-pricing-hover-transition, all 150ms ease-out);
+}
+
+.timeline-gap:hover {
+  background-color: var(--jsg-pricing-gap-hover-bg, #f0fdf4);
+  border-color: var(--jsg-pricing-gap-hover-border, #10b981);
+}
+
+.timeline-gap-button {
+  background-color: var(--jsg-pricing-gap-button-bg, #10b981);
+  color: var(--jsg-pricing-gap-button-text, white);
+}
+
+.timeline-gap-button:hover {
+  background-color: var(--jsg-pricing-gap-button-hover-bg, #059669);
+}
+
+/* Today marker */
+.timeline-today-marker {
+  background-color: var(--jsg-pricing-today-marker-bg, #ef4444);
+  width: var(--jsg-pricing-today-marker-width, 2px);
+  box-shadow: var(--jsg-pricing-today-marker-shadow, 0 0 8px rgba(239, 68, 68, 0.4));
+}
+
+/* Timeline dots - ensure they render as circles */
+.w-1\.5.h-1\.5.rounded-full {
+  border-radius: 9999px !important;
+}
+
+/* Lane container border - must be light gray like pricing app */
+.divide-x.rounded-lg.border {
+  border-color: #e5e7eb !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+
+/* Edit/Delete Action Buttons - improved styling matching pricing app */
+.group .absolute.top-2.right-2 button {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.375rem !important;
+  padding: 0.375rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: all 150ms ease-out !important;
+}
+
+/* Edit button hover - blue */
+.group .absolute.top-2.right-2 button:first-child:hover {
+  border-color: #93c5fd !important;
+  color: #3b82f6 !important;
+  background-color: #f0f9ff !important;
+}
+
+/* Delete button hover - red */
+.group .absolute.top-2.right-2 button:last-child:hover {
+  border-color: #fca5a5 !important;
+  color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+/* ========================================
+ * Badge Styles (for timeline Active badge)
+ * ======================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.badge-warning {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.badge-error {
+  background-color: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.badge-info {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.badge-secondary {
+  background-color: #f3f4f6 !important;
+  color: #4b5563 !important;
+}
+
+/* ========================================
+ * Card Styles (for timeline container)
+ * ======================================== */
+
+.card {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px dashed #d1d5db;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.card-body {
+  padding: 1rem 1.5rem;
+}
+
+/* ========================================
+ * Animations
+ * ======================================== */
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation utility classes */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

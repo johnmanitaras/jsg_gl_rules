@@ -1,0 +1,372 @@
+/* Import variables in correct order - ALL @imports MUST be at top */
+@import './styles/variables-fallback.css'; /* Base design system variables for standalone mode */
+@import './styles/custom-variables.css'; /* App-specific overrides */
+@import './styles/gl-rules.css'; /* GL Rules-specific component styles */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors - Using wrapper variables with fallbacks for standalone mode */
+  --color-primary: var(--color-primary-600, #2563eb);
+  --color-background: var(--color-background, #f9fafb);
+  --color-success: var(--color-success-600, #059669); /* Emerald 600 per style guide */
+  --color-warning: var(--color-warning-400, #fbbf24); /* Amber 400 per style guide */
+  --color-error: var(--color-error-600, #EF4444); /* Red 500 per style guide */
+  --color-info: var(--color-info-500, #3B82F6); /* Brand primary per style guide */
+  --color-text: var(--color-text, #111827);
+  --color-text-secondary: var(--color-text-secondary, #6b7280);
+  --color-border: var(--color-border, #e5e7eb);
+  --color-divider: var(--color-border-secondary, #f3f4f6);
+  --color-hover: var(--color-primary-700, #1D4ED8);
+  --color-active: var(--color-primary-800, #1E3A8A);
+  --color-disabled: var(--color-text-tertiary, #9ca3af);
+
+  /* Typography - Using wrapper variables with fallbacks */
+  --typography-fontFamily: var(--font-family-base, 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --typography-headingFontFamily: var(--font-family-heading, 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --typography-baseSize: var(--text-base, 1rem);
+  --typography-lineHeight: var(--leading-normal, 1.5);
+  --typography-fontWeightLight: var(--font-weight-light, 300);
+  --typography-fontWeightRegular: var(--font-weight-normal, 400);
+  --typography-fontWeightMedium: var(--font-weight-medium, 500);
+  --typography-fontWeightBold: var(--font-weight-bold, 700);
+
+  /* Spacing - Using wrapper variables with fallbacks */
+  --spacing-base: var(--spacing-1, 0.25rem);
+  --spacing-xs: var(--spacing-2, 0.5rem);
+  --spacing-sm: var(--spacing-3, 0.75rem);
+  --spacing-md: var(--spacing-4, 1rem);
+  --spacing-lg: var(--spacing-6, 1.5rem);
+  --spacing-xl: var(--spacing-8, 2rem);
+
+  /* Border Radius - Using wrapper variables with fallbacks */
+  --radius-none: var(--radius-none, 0);
+  --radius-sm: var(--radius-sm, 0.25rem);
+  --radius-md: var(--radius-md, 0.375rem);
+  --radius-lg: var(--radius-lg, 0.5rem);
+  --radius-full: var(--radius-full, 9999px);
+
+  /* Shadows - Using wrapper variables with fallbacks */
+  --shadow-none: var(--shadow-none, none);
+  --shadow-sm: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  --shadow-md: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06));
+  --shadow-lg: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05));
+  --shadow-xl: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
+
+  /* Inputs - Using wrapper variables with fallbacks */
+  --input-height: var(--height-input, 2.5rem);
+  --input-padding: 0.5rem 1rem; /* Keep current values as wrapper differs */
+  --input-fontSize: var(--text-sm, 0.875rem);
+  --input-borderWidth: 1px;
+  --input-borderColor: var(--input-borderColor, #d1d5db);
+  --input-borderRadius: var(--radius-input, 0.5rem);
+  --input-background: var(--input-background, #ffffff);
+  --input-placeholderColor: var(--input-placeholderColor, #9ca3af);
+  --input-disabledBackground: var(--input-disabledBackground, #f3f4f6);
+  --input-disabledColor: var(--input-disabledColor, #6b7280);
+
+  /* Focus - Using wrapper variables with fallbacks */
+  --focus-enabled: true; /* Keep for compatibility */
+  --focus-borderWidth: var(--focus-ringWidth, 2px);
+  --focus-borderColor: var(--focus-borderColor, #3B82F6); /* Brand primary */
+  --focus-shadowEnabled: true; /* Keep for compatibility */
+  --focus-shadowColor: var(--focus-shadowColor, #3B82F6); /* Brand primary */
+  --focus-shadowOpacity: 0.25; /* Keep current value vs wrapper's 0.5 */
+  --focus-shadowSize: 4px; /* Keep current implementation */
+  --focus-outlineWidth: var(--focus-ringWidth, 2px);
+  --focus-outlineOffset: var(--focus-ringOffset, 2px);
+
+  /* Buttons - Using wrapper variables with fallbacks */
+  /* Button minimum width removed - template should not impose constraints */
+  --button-height: var(--height-button, 3.25rem); /* 52px standard from wrapper */
+  --button-padding: 0.5rem 1rem; /* Keep current values as wrapper differs */
+  --button-borderRadius: var(--radius-button, 0.5rem);
+  --button-fontSize: var(--text-sm, 0.875rem);
+  --button-fontWeight: var(--font-weight-medium, 500);
+  --button-transition: var(--transition-fast, all 150ms cubic-bezier(0, 0, 0.2, 1));
+
+  /* Animation - Using wrapper variables with fallbacks */
+  --animation-duration: var(--duration-fast, 150ms);
+  --animation-timing: var(--ease-out, cubic-bezier(0, 0, 0.2, 1));
+}
+
+/* Base styles */
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: var(--jetsetgo-template-font-typography-fontFamily-custom);
+    font-size: var(--text-base);
+    line-height: var(--typography-lineHeight);
+    color: var(--color-text);
+    background-color: var(--color-background);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--jetsetgo-template-typography-headingFontFamily-custom);
+  }
+}
+
+/* Component styles */
+@layer components {
+  .container {
+    @apply mx-auto px-6 max-w-7xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center;
+    height: var(--height-input-xl, 2.75rem);
+    padding: var(--jetsetgo-template-button-padding, 0.5rem 1rem);
+    border-radius: var(--spacing-2, 0.5rem);
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: var(--font-weight-medium, 500);
+    color: white;
+    background-color: var(--color-primary-600, #2563eb);
+    transition: var(--jetsetgo-template-button-transition, all 150ms ease-out);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-700, #1d4ed8);
+  }
+
+  .btn-primary:active {
+    background-color: var(--color-primary-800, #1e40af);
+  }
+
+  .btn-primary:disabled {
+    background-color: var(--color-gray-400, #9ca3af);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center;
+    height: var(--height-input-xl, 2.75rem);
+    padding: var(--jetsetgo-template-button-padding, 0.5rem 1rem);
+    border-radius: var(--spacing-2, 0.5rem);
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text, #111827);
+    border: 1px solid var(--color-border, #e5e7eb);
+    background-color: white;
+    transition: var(--jetsetgo-template-button-transition, all 150ms ease-out);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-background, #f9fafb);
+  }
+
+  .input {
+    @apply w-full;
+    height: var(--spacing-10, 2.5rem);
+    padding: var(--jetsetgo-template-input-padding, 0.5rem 1rem);
+    font-size: var(--text-sm, 0.875rem);
+    border: 1px solid var(--input-borderColor, #d1d5db);
+    border-radius: var(--spacing-2, 0.5rem);
+    background-color: var(--input-background, white);
+    transition: 150ms ease-out;
+  }
+
+  .input::placeholder {
+    color: var(--input-placeholderColor, #9ca3af);
+  }
+
+  .input:disabled {
+    background-color: var(--input-disabledBackground, #f3f4f6);
+    color: var(--input-disabledColor, #6b7280);
+  }
+
+  .input:focus {
+    outline: none;
+    border: 2px solid var(--focus-borderColor, #3B82F6);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  }
+
+  .select {
+    @apply appearance-none w-full;
+    height: var(--spacing-10, 2.5rem);
+    padding: var(--jetsetgo-template-input-padding, 0.5rem 1rem);
+    font-size: var(--text-sm, 0.875rem);
+    border: 1px solid var(--input-borderColor, #d1d5db);
+    border-radius: var(--spacing-2, 0.5rem);
+    background-color: var(--input-background, white);
+    transition: 150ms ease-out;
+  }
+
+  .select:focus {
+    outline: none;
+    border: 2px solid var(--focus-borderColor, #3B82F6);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  }
+
+  /* Timeline Component Styles - must match jsg_pricing */
+  .timeline-container {
+    min-height: var(--jsg-pricing-timeline-min-height, 600px);
+    padding: var(--jsg-pricing-timeline-scroll-padding, 1.5rem);
+  }
+
+  .timeline-month {
+    width: var(--jsg-pricing-timeline-month-width, 8rem);
+    background-color: var(--jsg-pricing-month-header-bg, #f9fafb);
+    border: 1px solid var(--jsg-pricing-month-header-border, #e5e7eb);
+    color: var(--jsg-pricing-month-header-text, #111827);
+    transition: var(--jsg-pricing-hover-transition, all 150ms ease-out);
+  }
+
+  .timeline-month-current {
+    background-color: var(--jsg-pricing-month-current-bg, #eff6ff);
+    border-color: var(--jsg-pricing-month-current-border, #3b82f6);
+    color: var(--jsg-pricing-month-current-text, #1d4ed8);
+    font-weight: var(--font-weight-medium, 500);
+  }
+
+  .timeline-lane {
+    min-width: var(--jsg-pricing-timeline-lane-min-width, 13.75rem);
+  }
+
+  /* Version Cards - matching pricing app exactly */
+  .timeline-version {
+    background-color: var(--jsg-pricing-version-bg, #ffffff);
+    border: var(--jsg-pricing-version-border-width, 2px) solid var(--jsg-pricing-version-border, #e5e7eb);
+    border-radius: var(--jsg-pricing-version-border-radius, 0.5rem);
+    padding: var(--jsg-pricing-version-padding, 0.75rem);
+    box-shadow: var(--jsg-pricing-version-shadow, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    height: var(--jsg-pricing-timeline-version-height, 60px);
+    transition: var(--jsg-pricing-version-animation-duration, 300ms) ease-out;
+  }
+
+  .timeline-version:hover {
+    box-shadow: var(--jsg-pricing-version-shadow-hover, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+  }
+
+  .timeline-version-active {
+    background-color: var(--jsg-pricing-version-active-bg, #eff6ff);
+    border-color: var(--jsg-pricing-version-active-border, #93c5fd);
+  }
+
+  .timeline-version-active:hover {
+    background-color: var(--jsg-pricing-version-active-hover-bg, #dbeafe);
+    border-color: var(--jsg-pricing-version-active-hover-border, #60a5fa);
+  }
+
+  .timeline-version-expired {
+    background-color: var(--jsg-pricing-version-expired-bg, #f9fafb);
+    border-color: var(--jsg-pricing-version-expired-border, #d1d5db);
+    color: var(--jsg-pricing-version-expired-text, #6b7280);
+  }
+
+  .timeline-version-draft {
+    background-color: var(--jsg-pricing-version-draft-bg, #fffbeb);
+    border-color: var(--jsg-pricing-version-draft-border, #fcd34d);
+    color: var(--jsg-pricing-version-draft-text, #f59e0b);
+  }
+
+  .timeline-version-future {
+    background-color: var(--jsg-pricing-version-future-bg, #eff6ff);
+    border-color: var(--jsg-pricing-version-future-border, #93c5fd);
+    color: var(--jsg-pricing-version-future-text, #3b82f6);
+  }
+
+  /* Gap Indicators */
+  .timeline-gap {
+    background-color: var(--jsg-pricing-gap-bg, transparent);
+    border: var(--jsg-pricing-gap-border, 2px dashed #e5e7eb);
+    min-height: var(--jsg-pricing-timeline-gap-min-height, 40px);
+    transition: var(--jsg-pricing-hover-transition, all 150ms ease-out);
+  }
+
+  .timeline-gap:hover {
+    background-color: var(--jsg-pricing-gap-hover-bg, #f0fdf4);
+    border-color: var(--jsg-pricing-gap-hover-border, #10b981);
+  }
+
+  .timeline-gap-button {
+    background-color: var(--jsg-pricing-gap-button-bg, #10b981);
+    color: var(--jsg-pricing-gap-button-text, white);
+  }
+
+  .timeline-gap-button:hover {
+    background-color: var(--jsg-pricing-gap-button-hover-bg, #059669);
+  }
+
+  /* Today Marker */
+  .timeline-today-marker {
+    background-color: var(--jsg-pricing-today-marker-bg, #ef4444);
+    width: var(--jsg-pricing-today-marker-width, 2px);
+    box-shadow: var(--jsg-pricing-today-marker-shadow, 0 0 8px rgba(239, 68, 68, 0.4));
+  }
+
+  /* Badge Styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    background-color: var(--badge-success-bg, #dcfce7);
+    color: var(--badge-success-color, #15803d);
+  }
+
+  .badge-warning {
+    background-color: var(--badge-warning-bg, #fef3c7);
+    color: var(--badge-warning-color, #b45309);
+  }
+
+  .badge-error {
+    background-color: var(--badge-error-bg, #fee2e2);
+    color: var(--badge-error-color, #dc2626);
+  }
+
+  .badge-info {
+    background-color: var(--badge-info-bg, #dbeafe);
+    color: var(--badge-info-color, #1d4ed8);
+  }
+
+  /* Card Styles */
+  .card {
+    @apply bg-white rounded-lg;
+    border: 1px solid var(--color-border, #e5e7eb);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  }
+
+  .card-header {
+    @apply px-6 py-4;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+  }
+
+  .card-body {
+    @apply px-6 py-4;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-theme-primary {
+    color: var(--color-primary-600);
+  }
+
+  .bg-theme-primary {
+    background-color: var(--color-primary-600);
+  }
+
+  .border-theme-primary {
+    border-color: var(--color-primary-600);
+  }
+
+  .hover\:text-theme-primary:hover {
+    color: var(--color-primary-600);
+  }
+
+  .hover\:bg-theme-primary:hover {
+    background-color: var(--color-primary-600);
+  }
+
+  .hover\:border-theme-primary:hover {
+    border-color: var(--color-primary-600);
+  }
+}
+
+/* 
+ * CSS Variable Loading Order:
+ * 1. Wrapper variables (loaded by parent app in embedded mode) 
+ * 2. Custom app variables (imported at top)
+ * 3. App-specific variables (defined in :root above)
+ */
