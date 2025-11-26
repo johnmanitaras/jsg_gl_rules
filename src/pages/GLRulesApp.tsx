@@ -1,26 +1,29 @@
 /**
  * GLRulesApp Page
  *
- * Main page for GL Rules management with two tabs:
+ * Main page for GL Rules management with three tabs:
  * - Manage Accounts: CRUD for GL account definitions
  * - Manage Rules: Timeline view with Revenue and Commission lanes
+ * - Surcharge Rules: Configure payment surcharge GL account
  */
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Calculator, Plus, Search, AlertCircle } from 'lucide-react';
+import { BookOpen, Calculator, CreditCard, Plus, Search, AlertCircle } from 'lucide-react';
 import { Timeline } from '@jetsetgo/shared-components';
 import type { TimelineVersion, TimelineGap, TimelineLane } from '@jetsetgo/shared-components';
 
 import { useAccounts } from '../hooks/useAccounts';
 import { useGLRuleSets } from '../hooks/useGLRuleSets';
+import { useSettings } from '../hooks/useSettings';
 import { Account, GLRuleSet, GLRuleSetType, getRuleSetTypeFromLaneId, RULE_SET_TYPE_NAMES } from '../types/gl-rules';
 import { AccountsTable } from '../components/gl-rules/AccountsTable';
 import { AccountFormModal } from '../components/gl-rules/AccountFormModal';
 import { AddRuleSetModal } from '../components/gl-rules/AddRuleSetModal';
+import { SurchargeSettings } from '../components/gl-rules/SurchargeSettings';
 
-type TabId = 'accounts' | 'rules';
+type TabId = 'accounts' | 'rules' | 'surcharge';
 
 export function GLRulesApp() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,6 +48,11 @@ export function GLRulesApp() {
   const [selectedGap, setSelectedGap] = useState<TimelineGap | undefined>();
   const [selectedLaneId, setSelectedLaneId] = useState<number | null>(null);
 
+  // Surcharge settings state
+  const [surchargeAccountId, setSurchargeAccountId] = useState<number | null>(null);
+  const [surchargeLoading, setSurchargeLoading] = useState(true);
+  const [surchargeError, setSurchargeError] = useState<string | null>(null);
+
   // Hooks
   const {
     fetchAccounts,
@@ -61,6 +69,11 @@ export function GLRulesApp() {
     updateRuleSet,
     deleteRuleSet,
   } = useGLRuleSets();
+
+  const {
+    getPaymentSurchargeAccount,
+    setPaymentSurchargeAccount,
+  } = useSettings();
 
   // Update URL when tab changes
   useEffect(() => {
@@ -133,6 +146,39 @@ export function GLRulesApp() {
     };
   }, [fetchAllRuleSets]);
 
+  // Load surcharge account setting
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSurchargeSetting = async () => {
+      try {
+        setSurchargeLoading(true);
+        setSurchargeError(null);
+        const accountId = await getPaymentSurchargeAccount();
+        if (isMounted) {
+          setSurchargeAccountId(accountId);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error loading surcharge setting:', err);
+          setSurchargeError(
+            err instanceof Error ? err.message : 'Failed to load surcharge setting'
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setSurchargeLoading(false);
+        }
+      }
+    };
+
+    loadSurchargeSetting();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [getPaymentSurchargeAccount]);
+
   // Account handlers
   const handleCreateAccount = () => {
     setEditingAccount(undefined);
@@ -187,6 +233,12 @@ export function GLRulesApp() {
     setRuleSets(data);
   };
 
+  // Surcharge handlers
+  const handleSaveSurchargeAccount = async (accountId: number | null) => {
+    await setPaymentSurchargeAccount(accountId);
+    setSurchargeAccountId(accountId);
+  };
+
   // Convert rule sets to timeline versions
   const timelineVersions: TimelineVersion[] = ruleSets.map((rs) => ({
     id: rs.id,
@@ -230,6 +282,12 @@ export function GLRulesApp() {
       label: 'Manage Rules',
       icon: Calculator,
       description: 'Configure time-based GL allocation rules for revenue and commission',
+    },
+    {
+      id: 'surcharge' as TabId,
+      label: 'Surcharge Rules',
+      icon: CreditCard,
+      description: 'Configure the GL account for payment surcharge allocation',
     },
   ];
 
@@ -487,6 +545,26 @@ export function GLRulesApp() {
                   />
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+
+        {/* Surcharge Tab */}
+        {activeTab === 'surcharge' && (
+          <div className="container py-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <SurchargeSettings
+                accounts={accounts}
+                accountsLoading={accountsLoading}
+                currentAccountId={surchargeAccountId}
+                onSave={handleSaveSurchargeAccount}
+                isLoading={surchargeLoading}
+                error={surchargeError}
+              />
             </motion.div>
           </div>
         )}
