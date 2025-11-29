@@ -13,7 +13,9 @@ import { ApiTestResults } from './components/ApiTestResults';
 import { GraphQLTestResults } from './components/GraphQLTestResults';
 import { ApiResponse } from '../../types/api';
 import { GraphQLResponse } from '../../utils/graphql';
-import { DEFAULT_TENANT } from '../../lib/config';
+
+// Static table name using reference schema (tenant specified via X-Hasura-Tenant-Id header)
+const INVENTORY_HOLDING_UNITS_TABLE = 'jsg_reference_schema_inventory_holding_units';
 
 interface InventoryHoldingUnit {
   id: string;
@@ -66,10 +68,8 @@ export function TestPage() {
     // Fetch GraphQL API data
     const fetchGraphQLData = async () => {
       try {
-        const tenantName = tenant?.name || DEFAULT_TENANT;
-        const tableName = `${tenantName}_inventory_holding_units`;
         const query = `query GetInventoryHoldingUnits {
-  inventory_holding_units: ${tableName} {
+  inventory_holding_units: ${INVENTORY_HOLDING_UNITS_TABLE} {
     name
     business_id
     company_id
@@ -101,7 +101,7 @@ export function TestPage() {
     fetchRestData();
     fetchGraphQLData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant?.name]); // Only depend on tenant name which actually changes
+  }, []); // Run once on mount - tenant is handled via X-Hasura-Tenant-Id header
 
   const handleSignOut = async () => {
     try {

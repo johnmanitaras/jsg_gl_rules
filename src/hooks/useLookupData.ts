@@ -3,28 +3,29 @@
  *
  * Provides hooks for fetching lookup/reference data for dropdowns
  * (Resources, Product Types, Product Sub-Types)
+ * Uses GraphQL via Hasura with multi-tenant architecture.
+ * Tenant is specified via X-Hasura-Tenant-Id header (handled by useGraphQL).
  */
 
 import { useCallback } from 'react';
 import { useGraphQL } from './useGraphQL';
-import { useAuth } from './useAuth';
-import { DEFAULT_TENANT } from '../lib/config';
 import { Resource, ProductType, ProductSubType } from '../types/gl-rules';
+
+// Static table names using reference schema (tenant specified via header)
+const RESOURCES_TABLE = 'jsg_reference_schema_resources';
+const PRODUCT_TYPES_TABLE = 'jsg_reference_schema_product_types';
+const PRODUCT_SUB_TYPES_TABLE = 'jsg_reference_schema_product_sub_types';
 
 export function useLookupData() {
   const { query } = useGraphQL();
-  const { tenant } = useAuth();
-  const tenantName = tenant?.name || DEFAULT_TENANT;
 
   /**
    * Fetch all active resources for dropdown selection
    */
   const fetchResources = useCallback(async (): Promise<Resource[]> => {
-    const resourcesTable = `${tenantName}_resources`;
-
     const q = `
       query GetResources {
-        resources: ${resourcesTable}(
+        resources: ${RESOURCES_TABLE}(
           where: { active: { _eq: true } }
           order_by: { name: asc }
         ) {
@@ -48,17 +49,15 @@ export function useLookupData() {
       type: 'Resource', // Generic type since not in schema
       deleted: !r.active, // Map active to deleted for interface compatibility
     }));
-  }, [query, tenantName]);
+  }, [query]);
 
   /**
    * Fetch all active product types for dropdown selection
    */
   const fetchProductTypes = useCallback(async (): Promise<ProductType[]> => {
-    const productTypesTable = `${tenantName}_product_types`;
-
     const q = `
       query GetProductTypes {
-        product_types: ${productTypesTable}(
+        product_types: ${PRODUCT_TYPES_TABLE}(
           order_by: { name: asc }
         ) {
           id
@@ -80,17 +79,15 @@ export function useLookupData() {
       name: pt.name,
       deleted: false, // No deleted field in schema, assume all active
     }));
-  }, [query, tenantName]);
+  }, [query]);
 
   /**
    * Fetch all active product sub-types with parent type info
    */
   const fetchProductSubTypes = useCallback(async (): Promise<ProductSubType[]> => {
-    const productSubTypesTable = `${tenantName}_product_sub_types`;
-
     const q = `
       query GetProductSubTypes {
-        product_sub_types: ${productSubTypesTable}(
+        product_sub_types: ${PRODUCT_SUB_TYPES_TABLE}(
           order_by: { name: asc }
         ) {
           id
@@ -126,7 +123,7 @@ export function useLookupData() {
         deleted: subType.deleted,
         product_type_name: undefined, // No join available, would need separate query
       }));
-  }, [query, tenantName]);
+  }, [query]);
 
   /**
    * Fetch product sub-types for a specific product type
@@ -134,11 +131,9 @@ export function useLookupData() {
   const fetchProductSubTypesByType = useCallback(async (
     productTypeId: number
   ): Promise<ProductSubType[]> => {
-    const productSubTypesTable = `${tenantName}_product_sub_types`;
-
     const q = `
       query GetProductSubTypesByType($productTypeId: Int!) {
-        product_sub_types: ${productSubTypesTable}(
+        product_sub_types: ${PRODUCT_SUB_TYPES_TABLE}(
           where: {
             product_type_id: { _eq: $productTypeId }
           }
@@ -173,7 +168,7 @@ export function useLookupData() {
         deleted: st.deleted,
         product_type_name: undefined,
       }));
-  }, [query, tenantName]);
+  }, [query]);
 
   return {
     fetchResources,

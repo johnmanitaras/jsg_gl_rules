@@ -3,23 +3,20 @@
  *
  * Provides data fetching and mutation hooks for GL rules.
  * Rules are tied to gl_rule_set_id and specify which account_id to use.
- * Uses GraphQL via Hasura with tenant-aware table naming.
+ * Uses GraphQL via Hasura with multi-tenant architecture.
+ * Tenant is specified via X-Hasura-Tenant-Id header (handled by useGraphQL).
  */
 
 import { useCallback } from 'react';
 import { useGraphQL } from './useGraphQL';
-import { useAuth } from './useAuth';
-import { DEFAULT_TENANT } from '../lib/config';
 import { GLRule, RuleType, RuleFormData } from '../types/gl-rules';
+
+// Static table names using reference schema (tenant specified via header)
+const RULES_TABLE = 'jsg_reference_schema_gl_rules';
+const ACCOUNTS_TABLE = 'jsg_reference_schema_accounts';
 
 export function useGLRules() {
   const { query, mutate } = useGraphQL();
-  const { tenant } = useAuth();
-  const tenantName = tenant?.name || DEFAULT_TENANT;
-
-  // Table name with tenant prefix
-  const rulesTable = `${tenantName}_gl_rules`;
-  const accountsTable = `${tenantName}_accounts`;
 
   /**
    * Fetch all rules for a specific rule set
@@ -28,7 +25,7 @@ export function useGLRules() {
     async (ruleSetId: number): Promise<GLRule[]> => {
       const q = `
         query GetGLRules($ruleSetId: Int!) {
-          gl_rules: ${rulesTable}(
+          gl_rules: ${RULES_TABLE}(
             where: {
               gl_rule_set_id: { _eq: $ruleSetId }
               deleted: { _eq: false }
@@ -43,7 +40,7 @@ export function useGLRules() {
             deleted
             created_at
             updated_at
-            account: ${accountsTable.replace(tenantName + '_', '')}(where: { deleted: { _eq: false } }) {
+            account: accounts(where: { deleted: { _eq: false } }) {
               id
               name
               external_id
@@ -84,7 +81,7 @@ export function useGLRules() {
         // Fallback without relationship join
         const simpleQ = `
           query GetGLRulesSimple($ruleSetId: Int!) {
-            gl_rules: ${rulesTable}(
+            gl_rules: ${RULES_TABLE}(
               where: {
                 gl_rule_set_id: { _eq: $ruleSetId }
                 deleted: { _eq: false }
@@ -128,7 +125,7 @@ export function useGLRules() {
         }));
       }
     },
-    [query, rulesTable, accountsTable, tenantName]
+    [query]
   );
 
   /**
@@ -139,8 +136,8 @@ export function useGLRules() {
     data: RuleFormData
   ): Promise<GLRule> => {
     const m = `
-      mutation CreateGLRule($rule: ${rulesTable}_insert_input!) {
-        insert_${rulesTable}_one(object: $rule) {
+      mutation CreateGLRule($rule: jsg_reference_schema_gl_rules_insert_input!) {
+        insert_jsg_reference_schema_gl_rules_one(object: $rule) {
           id
           gl_rule_set_id
           rule_type
@@ -160,24 +157,20 @@ export function useGLRules() {
       account_id: data.account_id,
     };
 
-    const response = await mutate<
-      Record<
-        string,
-        {
-          id: number;
-          gl_rule_set_id: number;
-          rule_type: string;
-          target_id: number | null;
-          account_id: number;
-          deleted: boolean;
-          created_at: string;
-          updated_at: string;
-        }
-      >
-    >(m, { rule: ruleInput });
+    const response = await mutate<{
+      insert_jsg_reference_schema_gl_rules_one: {
+        id: number;
+        gl_rule_set_id: number;
+        rule_type: string;
+        target_id: number | null;
+        account_id: number;
+        deleted: boolean;
+        created_at: string;
+        updated_at: string;
+      };
+    }>(m, { rule: ruleInput });
 
-    const insertKey = `insert_${rulesTable}_one`;
-    const result = response.data[insertKey];
+    const result = response.data.insert_jsg_reference_schema_gl_rules_one;
 
     return {
       id: result.id,
@@ -199,8 +192,8 @@ export function useGLRules() {
     data: Partial<RuleFormData>
   ): Promise<GLRule> => {
     const m = `
-      mutation UpdateGLRule($id: Int!, $updates: ${rulesTable}_set_input!) {
-        update_${rulesTable}_by_pk(
+      mutation UpdateGLRule($id: Int!, $updates: jsg_reference_schema_gl_rules_set_input!) {
+        update_jsg_reference_schema_gl_rules_by_pk(
           pk_columns: { id: $id }
           _set: $updates
         ) {
@@ -216,24 +209,20 @@ export function useGLRules() {
       }
     `;
 
-    const response = await mutate<
-      Record<
-        string,
-        {
-          id: number;
-          gl_rule_set_id: number;
-          rule_type: string;
-          target_id: number | null;
-          account_id: number;
-          deleted: boolean;
-          created_at: string;
-          updated_at: string;
-        }
-      >
-    >(m, { id: ruleId, updates: data });
+    const response = await mutate<{
+      update_jsg_reference_schema_gl_rules_by_pk: {
+        id: number;
+        gl_rule_set_id: number;
+        rule_type: string;
+        target_id: number | null;
+        account_id: number;
+        deleted: boolean;
+        created_at: string;
+        updated_at: string;
+      };
+    }>(m, { id: ruleId, updates: data });
 
-    const updateKey = `update_${rulesTable}_by_pk`;
-    const result = response.data[updateKey];
+    const result = response.data.update_jsg_reference_schema_gl_rules_by_pk;
 
     return {
       id: result.id,
@@ -253,7 +242,7 @@ export function useGLRules() {
   const deleteRule = async (ruleId: number): Promise<boolean> => {
     const m = `
       mutation DeleteGLRule($id: Int!) {
-        update_${rulesTable}_by_pk(
+        update_jsg_reference_schema_gl_rules_by_pk(
           pk_columns: { id: $id }
           _set: { deleted: true }
         ) {
@@ -273,7 +262,7 @@ export function useGLRules() {
     async (ruleSetId: number): Promise<boolean> => {
       const q = `
         query CheckDefaultRule($ruleSetId: Int!) {
-          gl_rules: ${rulesTable}(
+          gl_rules: ${RULES_TABLE}(
             where: {
               gl_rule_set_id: { _eq: $ruleSetId }
               rule_type: { _eq: "default" }
@@ -288,7 +277,7 @@ export function useGLRules() {
       const response = await query<{ gl_rules: { id: number }[] }>(q, { ruleSetId });
       return response.data.gl_rules.length > 0;
     },
-    [query, rulesTable]
+    [query]
   );
 
   /**
@@ -330,8 +319,8 @@ export function useGLRules() {
     }));
 
     const m = `
-      mutation BulkCreateGLRules($rules: [${rulesTable}_insert_input!]!) {
-        insert_${rulesTable}(objects: $rules) {
+      mutation BulkCreateGLRules($rules: [jsg_reference_schema_gl_rules_insert_input!]!) {
+        insert_jsg_reference_schema_gl_rules(objects: $rules) {
           returning {
             id
             gl_rule_set_id
@@ -346,26 +335,22 @@ export function useGLRules() {
       }
     `;
 
-    const response = await mutate<
-      Record<
-        string,
-        {
-          returning: Array<{
-            id: number;
-            gl_rule_set_id: number;
-            rule_type: string;
-            target_id: number | null;
-            account_id: number;
-            deleted: boolean;
-            created_at: string;
-            updated_at: string;
-          }>;
-        }
-      >
-    >(m, { rules: ruleObjects });
+    const response = await mutate<{
+      insert_jsg_reference_schema_gl_rules: {
+        returning: Array<{
+          id: number;
+          gl_rule_set_id: number;
+          rule_type: string;
+          target_id: number | null;
+          account_id: number;
+          deleted: boolean;
+          created_at: string;
+          updated_at: string;
+        }>;
+      };
+    }>(m, { rules: ruleObjects });
 
-    const insertKey = `insert_${rulesTable}`;
-    return response.data[insertKey].returning.map((r) => ({
+    return response.data.insert_jsg_reference_schema_gl_rules.returning.map((r) => ({
       id: r.id,
       gl_rule_set_id: r.gl_rule_set_id,
       rule_type: r.rule_type as RuleType,

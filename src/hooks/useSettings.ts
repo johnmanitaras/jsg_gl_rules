@@ -2,13 +2,12 @@
  * Settings GraphQL Hooks
  *
  * Provides data fetching and mutation hooks for application settings.
- * Uses GraphQL via Hasura with tenant-aware table naming.
+ * Uses GraphQL via Hasura with multi-tenant architecture.
+ * Tenant is specified via X-Hasura-Tenant-Id header (handled by useGraphQL).
  */
 
 import { useCallback } from 'react';
 import { useGraphQL } from './useGraphQL';
-import { useAuth } from './useAuth';
-import { DEFAULT_TENANT } from '../lib/config';
 
 export interface Setting {
   id: number;
@@ -16,13 +15,11 @@ export interface Setting {
   setting_value: string | null;
 }
 
+// Static table name using reference schema (tenant specified via header)
+const SETTINGS_TABLE = 'jsg_reference_schema_settings';
+
 export function useSettings() {
   const { query, mutate } = useGraphQL();
-  const { tenant } = useAuth();
-  const tenantName = tenant?.name || DEFAULT_TENANT;
-
-  // Table name with tenant prefix
-  const settingsTable = `${tenantName}_settings`;
 
   /**
    * Fetch a setting by name
@@ -31,7 +28,7 @@ export function useSettings() {
     async (settingName: string): Promise<Setting | null> => {
       const q = `
         query GetSettingByName($settingName: String!) {
-          settings: ${settingsTable}(
+          settings: ${SETTINGS_TABLE}(
             where: { setting_name: { _eq: $settingName } }
             limit: 1
           ) {
@@ -45,7 +42,7 @@ export function useSettings() {
       const response = await query<{ settings: Setting[] }>(q, { settingName });
       return response.data.settings[0] || null;
     },
-    [query, settingsTable]
+    [query]
   );
 
   /**
@@ -61,7 +58,7 @@ export function useSettings() {
         // Update existing setting
         const m = `
           mutation UpdateSetting($id: Int!, $settingValue: String) {
-            update_${settingsTable}_by_pk(
+            update_jsg_reference_schema_settings_by_pk(
               pk_columns: { id: $id }
               _set: { setting_value: $settingValue }
             ) {
@@ -72,18 +69,17 @@ export function useSettings() {
           }
         `;
 
-        const response = await mutate<Record<string, Setting>>(m, {
+        const response = await mutate<{ update_jsg_reference_schema_settings_by_pk: Setting }>(m, {
           id: existing.id,
           settingValue,
         });
 
-        const updateKey = `update_${settingsTable}_by_pk`;
-        return response.data[updateKey];
+        return response.data.update_jsg_reference_schema_settings_by_pk;
       } else {
         // Create new setting
         const m = `
-          mutation CreateSetting($setting: ${settingsTable}_insert_input!) {
-            insert_${settingsTable}_one(object: $setting) {
+          mutation CreateSetting($setting: jsg_reference_schema_settings_insert_input!) {
+            insert_jsg_reference_schema_settings_one(object: $setting) {
               id
               setting_name
               setting_value
@@ -91,18 +87,17 @@ export function useSettings() {
           }
         `;
 
-        const response = await mutate<Record<string, Setting>>(m, {
+        const response = await mutate<{ insert_jsg_reference_schema_settings_one: Setting }>(m, {
           setting: {
             setting_name: settingName,
             setting_value: settingValue,
           },
         });
 
-        const insertKey = `insert_${settingsTable}_one`;
-        return response.data[insertKey];
+        return response.data.insert_jsg_reference_schema_settings_one;
       }
     },
-    [mutate, settingsTable, fetchSettingByName]
+    [mutate, fetchSettingByName]
   );
 
   /**

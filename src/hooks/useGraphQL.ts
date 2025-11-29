@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { graphqlClient, GraphQLRequest, GraphQLResponse } from '../utils/graphql';
+import { DEFAULT_TENANT } from '../lib/config';
 
 export function useGraphQL() {
-  const { getToken, onTokenExpired } = useAuth();
+  const { getToken, onTokenExpired, tenant } = useAuth();
 
   const executeQuery = useCallback(async <T = unknown>(
     request: GraphQLRequest
@@ -16,6 +17,10 @@ export function useGraphQL() {
 
     // Set the token in the GraphQL client
     graphqlClient.setAuthToken(token);
+
+    // Set tenant ID for multi-tenant architecture
+    const tenantId = tenant?.name || DEFAULT_TENANT;
+    graphqlClient.setTenantId(tenantId);
 
     try {
       // Execute the request
@@ -33,7 +38,7 @@ export function useGraphQL() {
       }
       throw error;
     }
-  }, [getToken, onTokenExpired]);
+  }, [getToken, onTokenExpired, tenant]);
 
   const query = useCallback(async <T = unknown>(
     query: string,

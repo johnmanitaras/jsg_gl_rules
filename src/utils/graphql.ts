@@ -26,14 +26,19 @@ export interface GraphQLRequest {
 
 /**
  * GraphQL client utility for making requests to Hasura
+ *
+ * Uses the multi-tenant architecture with X-Hasura-Tenant-Id header
+ * instead of tenant-prefixed table names.
  */
 export class GraphQLClient {
   private endpoint: string;
   private token: string | null;
+  private tenantId: string | null;
 
   constructor(endpoint: string = GRAPHQL_ENDPOINT, token: string | null = null) {
     this.endpoint = endpoint;
     this.token = token;
+    this.tenantId = null;
   }
 
   /**
@@ -41,6 +46,14 @@ export class GraphQLClient {
    */
   setAuthToken(token: string | null) {
     this.token = token;
+  }
+
+  /**
+   * Set the tenant ID for multi-tenant requests
+   * This is sent via the X-Hasura-Tenant-Id header
+   */
+  setTenantId(tenantId: string | null) {
+    this.tenantId = tenantId;
   }
 
   /**
@@ -56,6 +69,11 @@ export class GraphQLClient {
     // Add Firebase token as Bearer token for authentication
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    // Add tenant ID header for multi-tenant architecture
+    if (this.tenantId) {
+      headers['X-Hasura-Tenant-Id'] = this.tenantId;
     }
 
     const requestBody = {
