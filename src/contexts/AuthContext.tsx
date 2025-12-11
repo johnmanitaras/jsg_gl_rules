@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { authChannel } from '../lib/broadcast';
@@ -14,6 +14,7 @@ interface AuthContextType {
   permissions: string[];
   isEmbedded: boolean;
   token: string | null;
+  dbName: string | null;
   onTokenExpired?: () => void;
   getToken: () => Promise<string | null>;
 }
@@ -27,73 +28,64 @@ export const AuthContext = createContext<AuthContextType>({
   permissions: [],
   isEmbedded: false,
   token: null,
+  dbName: null,
   onTokenExpired: undefined,
   getToken: async () => null,
 });
 
+export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
   children: React.ReactNode;
-  // New prop names (per claude_for_child_developers.md)
-  authToken?: string;
-  tenantName?: string;
-  // Old prop names (for backward compatibility with wrapper)
   token?: string;
   dbName?: string;
   onTokenExpired?: () => void;
 }
 
-export function AuthProvider({ children, authToken, tenantName, token, dbName, onTokenExpired }: AuthProviderProps) {
-  // Support both old and new prop names for backward compatibility
-  const effectiveToken = authToken || token;
-  const effectiveTenant = tenantName || dbName;
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tenant, setTenant] = useState<TenantInfo | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+export function AuthProvider({ children, token: propToken, dbName: propDbName, onTokenExpired }: AuthProviderProps) {
+  // Determine embedded mode synchronously from props
+  const embedded = !!(propToken && propDbName);
+
+  // Initialize state with prop values if in embedded mode
+  const [user, setUser] = useState<User | null>(embedded ? ({} as User) : null);
+  const [loading, setLoading] = useState(!embedded); // No loading if embedded - we have everything
+  const [token, setToken] = useState<string | null>(embedded ? propToken || null : null);
+  const [dbName, setDbName] = useState<string | null>(embedded ? propDbName || null : null);
+  const [tenant, setTenant] = useState<TenantInfo | null>(
+    embedded ? { id: 'embedded', name: propDbName! } : null
+  );
+  const [userId, setUserId] = useState<string | null>(embedded ? 'embedded-user' : null);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [isEmbedded, setIsEmbedded] = useState<boolean>(false);
+  const [isEmbedded] = useState<boolean>(embedded);
 
   // getToken helper function
-  const getToken = async (): Promise<string | null> => {
-    if (isEmbedded) {
-      return effectiveToken || null;
+  const getToken = React.useCallback(async (): Promise<string | null> => {
+    if (embedded) {
+      return token;
     } else {
       return await auth.currentUser?.getIdToken() || null;
     }
-  };
+  }, [embedded, token]);
 
-  // Check if we're in embedded mode (props provided by parent)
+  // Handle embedded mode updates when token/tenant change
   useEffect(() => {
-    if (effectiveToken && effectiveTenant) {
-      console.log('Running in embedded mode with provided auth token and tenant name');
-      setIsEmbedded(true);
-
-      // Create a minimal tenant object with the provided tenant name
-      setTenant({ id: 'embedded', name: effectiveTenant });
-
-      // We don't have a full user object in embedded mode, but we can set a placeholder
-      // The actual token will be used in API calls
+    if (embedded && propToken && propDbName) {
+      console.log('Running in embedded mode with tenant name:', propDbName);
+      setToken(propToken);
+      setDbName(propDbName);
+      // IMPORTANT: Always use tenant from dbName prop in embedded mode, NOT from token claims
+      setTenant({ id: 'embedded', name: propDbName });
       setUser({} as User);
-
-      // Set minimal user info
       setUserId('embedded-user');
-
-      // In embedded mode, we don't have groups and permissions from Firebase
-      // These would typically come from the parent application if needed
-      setGroups([]);
-      setPermissions([]);
-
-      setLoading(false);
     }
-  }, [effectiveToken, effectiveTenant]);
+  }, [propToken, propDbName, embedded]);
 
   // Only run Firebase auth if not in embedded mode
   useEffect(() => {
     // Skip Firebase auth if we're in embedded mode
-    if (isEmbedded) return;
-    
+    if (embedded) return;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const idTokenResult = await user.getIdTokenResult();
@@ -103,15 +95,23 @@ export function AuthProvider({ children, authToken, tenantName, token, dbName, o
         const permissionsClaim = idTokenResult.claims.permissions as string[] || [];
 
         // Use tenant from claims, or fallback to default tenant for development/testing
-        setTenant(tenantClaim || { id: DEFAULT_TENANT, name: DEFAULT_TENANT });
+        const tenantInfo = tenantClaim || { id: DEFAULT_TENANT, name: DEFAULT_TENANT };
+        setTenant(tenantInfo);
         setUserId(user_id || null);
         setGroups(groupsClaim);
         setPermissions(permissionsClaim);
+
+        // Get token and store it
+        const firebaseToken = await user.getIdToken();
+        setToken(firebaseToken);
+        setDbName(tenantInfo.name);
       } else {
         setTenant(null);
         setUserId(null);
         setGroups([]);
         setPermissions([]);
+        setToken(null);
+        setDbName(null);
       }
       setUser(user);
       setLoading(false);
@@ -133,7 +133,7 @@ export function AuthProvider({ children, authToken, tenantName, token, dbName, o
       unsubscribe();
       authChannel.removeEventListener('message', handleAuthMessage);
     };
-  }, [isEmbedded]);
+  }, [embedded]);
 
   const value = {
     user,
@@ -143,7 +143,8 @@ export function AuthProvider({ children, authToken, tenantName, token, dbName, o
     groups,
     permissions,
     isEmbedded,
-    token: authToken || null,
+    token,
+    dbName,
     onTokenExpired,
     getToken,
   };
