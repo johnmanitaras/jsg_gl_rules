@@ -1,15 +1,61 @@
-import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { GLRulesApp } from './pages/GLRulesApp';
 import { GLRuleSetEditor } from './pages/GLRuleSetEditor';
 import { useAuth } from './hooks/useAuth';
 import { initializeStandaloneFallbacks, debugCSSVariables } from './utils/cssVariables';
+import { ReadOnlyToastProvider } from './contexts/ReadOnlyToastContext';
+import { PermissionsProvider, Permissions } from './contexts/PermissionsContext';
 
 const queryClient = new QueryClient();
 
+/**
+ * RouterSync Component
+ * Syncs child app routing with parent wrapper URL
+ *
+ * Per child-app-integration-standards.md:
+ * - Uses BrowserRouter (parent manages actual browser URL)
+ * - Navigates to initialRoute on mount (once)
+ * - Notifies parent of route changes via onNavigate
+ */
+interface RouterSyncProps {
+  initialRoute?: string;
+  onNavigate?: (route: string) => void;
+}
+
+function RouterSync({ initialRoute, onNavigate }: RouterSyncProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasInitialized = useRef(false);
+
+  // Navigate to initial route when component mounts (once only)
+  useEffect(() => {
+    if (initialRoute && !hasInitialized.current) {
+      hasInitialized.current = true;
+      if (location.pathname !== initialRoute) {
+        console.log('[RouterSync] Initial navigation to:', initialRoute);
+        navigate(initialRoute, { replace: true });
+      }
+    }
+  }, [initialRoute, navigate, location.pathname]);
+
+  // Notify parent of route changes (after initialization)
+  useEffect(() => {
+    if (onNavigate && hasInitialized.current) {
+      console.log('[RouterSync] Notifying parent of route:', location.pathname + location.search);
+      onNavigate(location.pathname + location.search);
+    }
+  }, [location.pathname, location.search, onNavigate]);
+
+  return null;
+}
+
+/**
+ * PrivateRoute wrapper - redirects to login if not authenticated
+ */
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
@@ -17,70 +63,19 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     return <div>Loading...</div>;
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" />;
-}
-
-/**
- * RouterSync Component
- * Handles synchronization between parent wrapper URL and internal routing
- *
- * In embedded mode (MemoryRouter):
- * - Listens to location changes and notifies parent via onNavigate
- * - Parent controls browser URL, we control internal MemoryRouter state
- *
- * In standalone mode (BrowserRouter):
- * - Router directly controls browser URL, no sync needed
- */
-interface RouterSyncProps {
-  initialRoute?: string;
-  onNavigate?: (route: string) => void;
-  isEmbedded: boolean;
-}
-
-function RouterSync({ initialRoute, onNavigate, isEmbedded }: RouterSyncProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  // Only sync routes in embedded mode
-  if (!isEmbedded) {
-    return null;
-  }
-
-  // Navigate to initial route when it changes from parent
-  useEffect(() => {
-    if (initialRoute && location.pathname !== initialRoute) {
-      console.log('[RouterSync] Parent route changed to:', initialRoute);
-      navigate(initialRoute, { replace: true });
-    }
-  }, [initialRoute, navigate, location.pathname]);
-
-  // Mark as initialized after first render
-  useEffect(() => {
-    if (!hasInitialized) {
-      setHasInitialized(true);
-    }
-  }, [hasInitialized]);
-
-  // Notify parent of internal route changes
-  useEffect(() => {
-    if (onNavigate && hasInitialized) {
-      console.log('[RouterSync] Internal route changed to:', location.pathname);
-      onNavigate(location.pathname);
-    }
-  }, [location.pathname, onNavigate, hasInitialized]);
-
-  return null;
+  // In embedded mode, user is always authenticated via token prop
+  // In standalone mode, check Firebase auth
+  return user ? <>{children}</> : <Login />;
 }
 
 interface AppProps {
-  // New prop names (per claude_for_child_developers.md)
-  authToken?: string;
-  tenantName?: string;
-  // Old prop names (for backward compatibility with wrapper)
+  // Required auth/tenant props (from parent wrapper)
   token?: string;
   dbName?: string;
   onTokenExpired?: () => void;
+  // Alternative prop names for compatibility
+  authToken?: string;
+  tenantName?: string;
   // Routing props
   initialRoute?: string;
   onNavigate?: (route: string) => void;
@@ -88,6 +83,8 @@ interface AppProps {
   basePath?: string;
   currentPath?: string;
   onNavigateToApp?: (path: string) => void;
+  // Permissions prop from wrapper
+  permissions?: Permissions;
 }
 
 function App({
@@ -99,76 +96,69 @@ function App({
   initialRoute,
   onNavigate,
   subRoute,
+  basePath,
+  permissions,
 }: AppProps = {}) {
-  // Support both old and new prop names for backward compatibility
+  // Support both prop name conventions
   const effectiveToken = authToken || token;
   const effectiveTenant = tenantName || dbName;
 
-  // Initialize CSS variable fallbacks and debug info
+  // Initialize CSS variable fallbacks for standalone mode
   useEffect(() => {
     initializeStandaloneFallbacks();
     debugCSSVariables();
   }, []);
 
-  // Detect embedded mode - when parent provides auth props
+  // Use initialRoute or subRoute (for compatibility)
+  const effectiveInitialRoute = initialRoute || subRoute;
+
+  // Determine if we're in embedded mode (parent provides auth props)
   const isEmbedded = !!(effectiveToken && effectiveTenant && onTokenExpired);
 
-  // Use initialRoute or subRoute (for compatibility)
-  const effectiveInitialRoute = initialRoute || subRoute || '/gl-rules';
-
-  // Choose router based on mode:
-  // - Embedded: MemoryRouter (parent controls browser URL)
-  // - Standalone: BrowserRouter (we control browser URL)
-  const RouterComponent = isEmbedded ? MemoryRouter : BrowserRouter;
-
-  // Router props
-  const routerProps = isEmbedded
-    ? { initialEntries: [effectiveInitialRoute] }
-    : {};
+  // Use basePath as BrowserRouter basename in embedded mode
+  // This allows routes like /rule-set/:id to work when browser URL is /gl-rules/rule-set/:id
+  const routerBasename = isEmbedded && basePath ? basePath : undefined;
 
   return (
     <div className="jsg-gl-rules">
       <QueryClientProvider client={queryClient}>
-        <AuthProvider
-          authToken={effectiveToken}
-          tenantName={effectiveTenant}
-          token={effectiveToken}
-          dbName={effectiveTenant}
-          onTokenExpired={onTokenExpired}
-        >
-          <RouterComponent {...routerProps}>
-            {isEmbedded && (
-              <RouterSync
-                initialRoute={effectiveInitialRoute}
-                onNavigate={onNavigate}
-                isEmbedded={isEmbedded}
-              />
-            )}
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/"
-                element={<Navigate to="/gl-rules" replace />}
-              />
-              <Route
-                path="/gl-rules"
-                element={
-                  <PrivateRoute>
-                    <GLRulesApp />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/gl-rules/rule-set/:ruleSetId"
-                element={
-                  <PrivateRoute>
-                    <GLRuleSetEditor />
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-          </RouterComponent>
-        </AuthProvider>
+        <ReadOnlyToastProvider>
+          <PermissionsProvider permissions={permissions}>
+            <AuthProvider
+              authToken={effectiveToken}
+              tenantName={effectiveTenant}
+              token={effectiveToken}
+              dbName={effectiveTenant}
+              onTokenExpired={onTokenExpired}
+            >
+              <BrowserRouter basename={routerBasename}>
+                <RouterSync
+                  initialRoute={effectiveInitialRoute}
+                  onNavigate={onNavigate}
+                />
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route
+                    path="/"
+                    element={
+                      <PrivateRoute>
+                        <GLRulesApp />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/rule-set/:ruleSetId"
+                    element={
+                      <PrivateRoute>
+                        <GLRuleSetEditor />
+                      </PrivateRoute>
+                    }
+                  />
+                </Routes>
+              </BrowserRouter>
+            </AuthProvider>
+          </PermissionsProvider>
+        </ReadOnlyToastProvider>
       </QueryClientProvider>
     </div>
   );

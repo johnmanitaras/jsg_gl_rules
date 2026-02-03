@@ -3,21 +3,23 @@
  *
  * Main page for GL Rules management with three tabs:
  * - Manage Accounts: CRUD for GL account definitions
- * - Manage Rules: Timeline view with Revenue and Commission lanes
+ * - Manage Rules: Timeline view with Revenue, Commission, and Cancellation Fee lanes
  * - Surcharge Rules: Configure payment surcharge GL account
  */
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { BookOpen, Calculator, CreditCard, Plus, Search, AlertCircle } from 'lucide-react';
-import { Timeline } from '@jetsetgo/shared-components';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Calculator, CreditCard, Plus, Search, AlertCircle, History, X } from 'lucide-react';
+import { Timeline, AuditHistory } from '@jetsetgo/shared-components';
 import type { TimelineVersion, TimelineGap, TimelineLane } from '@jetsetgo/shared-components';
+import { useAuth } from '../hooks/useAuth';
 
+import { usePermissions } from '../contexts/PermissionsContext';
 import { useAccounts } from '../hooks/useAccounts';
 import { useGLRuleSets } from '../hooks/useGLRuleSets';
 import { useSettings } from '../hooks/useSettings';
-import { Account, GLRuleSet, GLRuleSetType, getRuleSetTypeFromLaneId, RULE_SET_TYPE_NAMES } from '../types/gl-rules';
+import { Account, GLRuleSet, GLRuleSetType, getRuleSetTypeFromLaneId, RULE_SET_TYPE_NAMES, LANE_IDS } from '../types/gl-rules';
 import { AccountsTable } from '../components/gl-rules/AccountsTable';
 import { AccountFormModal } from '../components/gl-rules/AccountFormModal';
 import { AddRuleSetModal } from '../components/gl-rules/AddRuleSetModal';
@@ -26,10 +28,16 @@ import { SurchargeSettings } from '../components/gl-rules/SurchargeSettings';
 type TabId = 'accounts' | 'rules' | 'surcharge';
 
 export function GLRulesApp() {
+  const { canEdit, inputProps } = usePermissions();
+  const { token, tenant } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>(
     (searchParams.get('tab') as TabId) || 'accounts'
   );
+
+  // Audit history modal state
+  const [showAuditHistory, setShowAuditHistory] = useState(false);
 
   // Accounts state
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -247,18 +255,19 @@ export function GLRulesApp() {
     end_date: rs.end_date,
     created_at: rs.created_at,
     updated_at: rs.updated_at,
-    lane_id: rs.type === 'revenue' ? 0 : 1,
+    lane_id: LANE_IDS[rs.type],
   }));
 
   // Timeline lanes
   const lanes: TimelineLane[] = [
     { id: 0, name: 'Revenue Rules' },
     { id: 1, name: 'Commission Rules' },
+    { id: 2, name: 'Cancellation Fee Rules' },
   ];
 
-  // Get rule set link path for navigation
-  const getRuleSetLinkPath = (version: TimelineVersion) => {
-    return `/gl-rules/rule-set/${version.id}`;
+  // Handle version click for programmatic navigation
+  const handleVersionClick = (version: TimelineVersion) => {
+    navigate(`/rule-set/${version.id}`);
   };
 
   // Scroll to today helper
@@ -308,24 +317,35 @@ export function GLRulesApp() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1
-              style={{
-                fontSize: 'var(--text-2xl)',
-                fontWeight: 'var(--font-weight-bold)',
-                color: 'var(--color-text)',
-              }}
-            >
-              GL Rules
-            </h1>
-            <p
-              style={{
-                fontSize: 'var(--text-sm)',
-                color: 'var(--color-text-secondary)',
-                marginTop: 'var(--spacing-2)',
-              }}
-            >
-              Manage General Ledger allocation rules for revenue and commission
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1
+                  style={{
+                    fontSize: 'var(--text-2xl)',
+                    fontWeight: 'var(--font-weight-bold)',
+                    color: 'var(--color-text)',
+                  }}
+                >
+                  GL Rules
+                </h1>
+                <p
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--color-text-secondary)',
+                    marginTop: 'var(--spacing-2)',
+                  }}
+                >
+                  Manage General Ledger allocation rules for revenue and commission
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAuditHistory(true)}
+                className="p-2 text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-600)] hover:bg-[var(--color-gray-100)] rounded-md transition-colors"
+                title="View change history"
+              >
+                <History className="w-5 h-5" />
+              </button>
+            </div>
           </motion.div>
         </div>
 
@@ -419,14 +439,16 @@ export function GLRulesApp() {
                     style={{ height: 'var(--height-button)' }}
                   />
                 </div>
-                <button
-                  onClick={handleCreateAccount}
-                  className="btn-primary flex items-center gap-2"
-                  style={{ height: 'var(--height-button)' }}
-                >
-                  <Plus size={16} />
-                  New Account
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={handleCreateAccount}
+                    className="btn-primary flex items-center gap-2"
+                    style={{ height: 'var(--height-button)' }}
+                  >
+                    <Plus size={16} />
+                    New Account
+                  </button>
+                )}
               </div>
 
               {/* Error State */}
@@ -457,6 +479,7 @@ export function GLRulesApp() {
                 onEdit={handleEditAccount}
                 onDelete={handleDeleteAccount}
                 isLoading={accountsLoading}
+                canEdit={canEdit}
               />
             </motion.div>
           </div>
@@ -541,7 +564,7 @@ export function GLRulesApp() {
                       const ruleSet = ruleSets.find((rs) => rs.id === v.id);
                       if (ruleSet) await handleDeleteRuleSet(ruleSet);
                     }}
-                    getVersionLinkPath={getRuleSetLinkPath}
+                    onVersionClick={handleVersionClick}
                   />
                 </div>
               )}
@@ -564,6 +587,7 @@ export function GLRulesApp() {
                 onSave={handleSaveSurchargeAccount}
                 isLoading={surchargeLoading}
                 error={surchargeError}
+                canEdit={canEdit}
               />
             </motion.div>
           </div>
@@ -589,6 +613,62 @@ export function GLRulesApp() {
         laneId={selectedLaneId}
         existingRuleSets={ruleSets}
       />
+
+      {/* Audit History Modal */}
+      <AnimatePresence>
+        {showAuditHistory && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowAuditHistory(false)}
+            />
+
+            {/* Modal */}
+            <div className="flex min-h-full items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="relative w-full max-w-5xl bg-white rounded-xl shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-[var(--color-border)]">
+                  <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                    GL Rules History
+                  </h3>
+                  <button
+                    onClick={() => setShowAuditHistory(false)}
+                    className="p-2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-gray-100)] rounded-md transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 max-h-[calc(80vh-80px)] overflow-y-auto">
+                  {token && tenant?.name ? (
+                    <AuditHistory
+                      appContext="gl-rules"
+                      token={token}
+                      tenantId={tenant.name}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-[var(--color-text-secondary)]">
+                      Authentication required to view history
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

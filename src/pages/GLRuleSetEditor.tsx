@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Calculator, Calendar, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { useGLRuleSets } from '../hooks/useGLRuleSets';
 import { useGLRules } from '../hooks/useGLRules';
 import { useAccounts } from '../hooks/useAccounts';
@@ -29,6 +30,7 @@ import { RuleBuilder } from '../components/gl-rules/RuleBuilder';
 import { RuleConfigForm } from '../components/gl-rules/RuleConfigForm';
 
 export function GLRuleSetEditor() {
+  const { canEdit } = usePermissions();
   const { ruleSetId } = useParams<{ ruleSetId: string }>();
   const navigate = useNavigate();
 
@@ -267,7 +269,7 @@ export function GLRuleSetEditor() {
           }}
         >
           <button
-            onClick={() => navigate('/gl-rules?tab=rules')}
+            onClick={() => navigate('/?tab=rules')}
             className="btn-secondary"
             style={{
               width: '40px',
@@ -323,7 +325,7 @@ export function GLRuleSetEditor() {
           }}
         >
           <button
-            onClick={() => navigate('/gl-rules?tab=rules')}
+            onClick={() => navigate('/?tab=rules')}
             className="btn-secondary"
             style={{
               width: '40px',
@@ -426,7 +428,7 @@ export function GLRuleSetEditor() {
               }}
             >
               <button
-                onClick={() => navigate('/gl-rules?tab=rules')}
+                onClick={() => navigate('/?tab=rules')}
                 className="btn-secondary"
                 style={{
                   width: '40px',
@@ -691,16 +693,19 @@ export function GLRuleSetEditor() {
                     accounts={accounts}
                     onEditRule={handleEditRule}
                     onDeleteRule={handleDeleteRule}
+                    canEdit={canEdit}
                   />
                 </div>
 
                 {/* Add Rule Builder */}
-                <RuleBuilder
-                  rules={rulesForDisplay}
-                  accounts={accounts}
-                  onAddRule={handleAddRule}
-                  isSaving={isSaving}
-                />
+                {canEdit && (
+                  <RuleBuilder
+                    rules={rulesForDisplay}
+                    accounts={accounts}
+                    onAddRule={handleAddRule}
+                    isSaving={isSaving}
+                  />
+                )}
               </>
             )}
           </div>
