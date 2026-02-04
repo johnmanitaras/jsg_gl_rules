@@ -23,6 +23,7 @@ interface RuleListProps {
   accounts: Account[];
   onEditRule: (index: number) => void;
   onDeleteRule: (index: number) => void;
+  canEdit?: boolean;
 }
 
 interface RuleWithName extends RuleFormData {
@@ -56,6 +57,7 @@ export function RuleList({
   accounts,
   onEditRule,
   onDeleteRule,
+  canEdit = true,
 }: RuleListProps) {
   const {
     fetchResources,
@@ -265,6 +267,7 @@ export function RuleList({
               accountExternalId={ruleWithName.accountExternalId}
               onEdit={() => onEditRule(ruleWithName.index)}
               onDelete={() => onDeleteRule(ruleWithName.index)}
+              canEdit={canEdit}
             />
           </motion.div>
         ))}

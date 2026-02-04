@@ -17,6 +17,7 @@ interface AccountsTableProps {
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => Promise<void>;
   isLoading?: boolean;
+  canEdit?: boolean;
 }
 
 export function AccountsTable({
@@ -25,6 +26,7 @@ export function AccountsTable({
   onEdit,
   onDelete,
   isLoading = false,
+  canEdit = true,
 }: AccountsTableProps) {
   const [deleteConfirmAccount, setDeleteConfirmAccount] = useState<Account | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -133,17 +135,19 @@ export function AccountsTable({
               >
                 External ID
               </th>
-              <th
-                className="text-right px-6 py-4"
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--color-text-secondary)',
-                  width: '120px',
-                }}
-              >
-                Actions
-              </th>
+              {canEdit && (
+                <th
+                  className="text-right px-6 py-4"
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--color-text-secondary)',
+                    width: '120px',
+                  }}
+                >
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -186,26 +190,28 @@ export function AccountsTable({
                     {account.external_id}
                   </code>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => onEdit(account)}
-                      className="p-2 rounded-md hover:bg-neutral-100 transition-colors"
-                      style={{ color: 'var(--color-text-secondary)' }}
-                      title="Edit account"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(account)}
-                      className="p-2 rounded-md hover:bg-red-50 transition-colors"
-                      style={{ color: 'var(--color-error-500)' }}
-                      title="Delete account"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+                {canEdit && (
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => onEdit(account)}
+                        className="p-2 rounded-md hover:bg-neutral-100 transition-colors"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                        title="Edit account"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(account)}
+                        className="p-2 rounded-md hover:bg-red-50 transition-colors"
+                        style={{ color: 'var(--color-error-500)' }}
+                        title="Delete account"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                )}
               </motion.tr>
             ))}
           </tbody>

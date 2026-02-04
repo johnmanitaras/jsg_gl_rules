@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { GLRulesApp } from './pages/GLRulesApp';
 import { GLRuleSetEditor } from './pages/GLRuleSetEditor';
+import { InvoiceBatchDetail } from './pages/InvoiceBatchDetail';
 import { useAuth } from './hooks/useAuth';
 import { initializeStandaloneFallbacks, debugCSSVariables } from './utils/cssVariables';
 import { ReadOnlyToastProvider } from './contexts/ReadOnlyToastContext';
@@ -151,6 +152,14 @@ function App({
                     element={
                       <PrivateRoute>
                         <GLRuleSetEditor />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/batch/:batchId"
+                    element={
+                      <PrivateRoute>
+                        <InvoiceBatchDetail />
                       </PrivateRoute>
                     }
                   />

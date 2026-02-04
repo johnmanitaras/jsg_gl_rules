@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { Account, AccountFormData } from '../../types/gl-rules';
 
 interface AccountFormModalProps {
@@ -24,6 +25,7 @@ export function AccountFormModal({
   account,
   checkExternalIdExists,
 }: AccountFormModalProps) {
+  const { canEdit, inputProps } = usePermissions();
   const [name, setName] = useState('');
   const [externalId, setExternalId] = useState('');
   const [errors, setErrors] = useState<{ name?: string; external_id?: string }>({});
@@ -104,14 +106,16 @@ export function AccountFormModal({
       >
         Cancel
       </button>
-      <button
-        type="submit"
-        form="account-form"
-        className="btn-primary"
-        disabled={isSaving}
-      >
-        {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Account'}
-      </button>
+      {canEdit && (
+        <button
+          type="submit"
+          form="account-form"
+          className="btn-primary"
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Account'}
+        </button>
+      )}
     </>
   );
 
@@ -153,6 +157,7 @@ export function AccountFormModal({
                 width: '100%',
                 borderColor: errors.name ? 'var(--color-error-500)' : undefined,
               }}
+              {...inputProps}
             />
             {errors.name && (
               <p
@@ -195,6 +200,7 @@ export function AccountFormModal({
                 width: '100%',
                 borderColor: errors.external_id ? 'var(--color-error-500)' : undefined,
               }}
+              {...inputProps}
             />
             <p
               style={{

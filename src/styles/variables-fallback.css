@@ -106,6 +106,18 @@
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
 
+  /* COLOR NEUTRAL (aliases to gray for compatibility) */
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
   /* COLOR  */
   --color-background: #f9fafb;
   --color-black: #000000;
@@ -128,6 +140,7 @@
   --color-text-primary: #111827;
   --color-text-disabled: #d1d5db;
   --color-text-inverse: #ffffff;
+  --color-text-muted: #9ca3af;
   --color-text-secondary: #6b7280;
   --color-text-tertiary: #9ca3af;
   --color-textSecondary: #6b7280;
@@ -308,14 +321,20 @@
   --badge-default-color: #374151;
   --badge-error-bg: #fee2e2;
   --badge-error-color: #991b1b;
+  --badge-error-text: #dc2626;
   --badge-info-bg: #dbeafe;
   --badge-info-color: #1e40af;
+  --badge-info-text: #2563eb;
+  --badge-neutral-bg: #f3f4f6;
+  --badge-neutral-text: #4b5563;
   --badge-primary-bg: #dbeafe;
   --badge-primary-color: #1e40af;
   --badge-success-bg: #d1fae5;
   --badge-success-color: #065f46;
+  --badge-success-text: #059669;
   --badge-warning-bg: #fed7aa;
   --badge-warning-color: #92400e;
+  --badge-warning-text: #d97706;
   --border-0: 0;
   --border-1: 1px;
   --border-2: 2px;

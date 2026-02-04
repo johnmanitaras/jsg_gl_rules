@@ -364,9 +364,22 @@
   }
 }
 
-/* 
+/*
  * CSS Variable Loading Order:
- * 1. Wrapper variables (loaded by parent app in embedded mode) 
+ * 1. Wrapper variables (loaded by parent app in embedded mode)
  * 2. Custom app variables (imported at top)
  * 3. App-specific variables (defined in :root above)
  */
+
+/* Read-only input styling for permissions */
+.input-readonly,
+.input-readonly:focus,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[disabled] {
+  background-color: var(--color-gray-50, #f9fafb);
+  cursor: not-allowed;
+  opacity: 0.7;
+  pointer-events: auto;
+}

@@ -17,6 +17,7 @@ interface SurchargeSettingsProps {
   onSave: (accountId: number | null) => Promise<void>;
   isLoading: boolean;
   error: string | null;
+  canEdit?: boolean;
 }
 
 export function SurchargeSettings({
@@ -26,6 +27,7 @@ export function SurchargeSettings({
   onSave,
   isLoading,
   error,
+  canEdit = true,
 }: SurchargeSettingsProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(currentAccountId);
   const [isSaving, setIsSaving] = useState(false);
@@ -284,6 +286,7 @@ export function SurchargeSettings({
               value={selectedAccountId}
               onChange={(value) => setSelectedAccountId(value as number | null)}
               placeholder="Search for an account..."
+              disabled={!canEdit}
             />
           </div>
 
@@ -310,50 +313,52 @@ export function SurchargeSettings({
           )}
 
           {/* Action Buttons */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 'var(--spacing-3)',
-              paddingTop: 'var(--spacing-4)',
-              borderTop: '1px solid var(--color-border)',
-            }}
-          >
-            {currentAccountId !== null && (
-              <button
-                className="btn-secondary"
-                onClick={handleClear}
-                disabled={isSaving}
-                style={{ minWidth: '100px' }}
-              >
-                Clear
-              </button>
-            )}
-            <button
-              className="btn-primary"
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving || accounts.length === 0}
+          {canEdit && (
+            <div
               style={{
-                minWidth: '120px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 'var(--spacing-2)',
+                justifyContent: 'flex-end',
+                gap: 'var(--spacing-3)',
+                paddingTop: 'var(--spacing-4)',
+                borderTop: '1px solid var(--color-border)',
               }}
             >
-              {isSaving ? (
-                <>
-                  <Loader2
-                    size={16}
-                    style={{ animation: 'spin 1s linear infinite' }}
-                  />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
+              {currentAccountId !== null && (
+                <button
+                  className="btn-secondary"
+                  onClick={handleClear}
+                  disabled={isSaving}
+                  style={{ minWidth: '100px' }}
+                >
+                  Clear
+                </button>
               )}
-            </button>
-          </div>
+              <button
+                className="btn-primary"
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving || accounts.length === 0}
+                style={{
+                  minWidth: '120px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 'var(--spacing-2)',
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2
+                      size={16}
+                      style={{ animation: 'spin 1s linear infinite' }}
+                    />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+          )}
         </>
       )}
 

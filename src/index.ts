@@ -10,6 +10,7 @@ import './styles/variables-fallback.css';
 import './styles/custom-variables.css';
 import './styles/gl-rules.css';
 import './index.css';
+import '@jetsetgo/shared-components/styles.css';
 
 // Export the main component
 export { default } from './App';

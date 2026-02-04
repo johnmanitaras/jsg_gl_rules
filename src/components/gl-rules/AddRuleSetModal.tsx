@@ -11,6 +11,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, AlertCircle, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { TimelineGap } from '@jetsetgo/shared-components';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { useGLRuleSets } from '../../hooks/useGLRuleSets';
 import { useGLRules } from '../../hooks/useGLRules';
 import {
@@ -28,7 +29,7 @@ interface AddRuleSetModalProps {
   onSaved: () => void;
   ruleSet?: GLRuleSet; // If editing existing rule set
   gap?: TimelineGap; // Gap from Timeline component (has start/end as Date objects)
-  laneId?: number | null; // Lane ID determines type (0 = revenue, 1 = commission)
+  laneId?: number | null; // Lane ID determines type (0 = revenue, 1 = commission, 2 = cancellation_fee)
   existingRuleSets?: GLRuleSet[]; // All existing rule sets for smart date defaults
 }
 
@@ -41,6 +42,7 @@ export function AddRuleSetModal({
   laneId,
   existingRuleSets = [],
 }: AddRuleSetModalProps) {
+  const { canEdit, inputProps } = usePermissions();
   const { createRuleSet, updateRuleSet, checkOverlap } = useGLRuleSets();
   const { fetchRulesByRuleSet, bulkCreateRules } = useGLRules();
 
@@ -290,44 +292,63 @@ export function AddRuleSetModal({
               </div>
 
               {/* Type Badge */}
-              <div
-                style={{
-                  marginBottom: 'var(--spacing-4)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-2)',
-                  padding: 'var(--spacing-2) var(--spacing-3)',
-                  backgroundColor:
-                    determinedType === 'revenue'
-                      ? 'var(--color-success-50)'
-                      : 'var(--color-warning-50)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <div
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor:
-                      determinedType === 'revenue'
-                        ? 'var(--color-success-500)'
-                        : 'var(--color-warning-500)',
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--font-weight-medium)',
-                    color:
-                      determinedType === 'revenue'
-                        ? 'var(--color-success-700)'
-                        : 'var(--color-warning-700)',
-                  }}
-                >
-                  {RULE_SET_TYPE_NAMES[determinedType]} Rules
-                </span>
-              </div>
+              {(() => {
+                // Determine badge colors based on type
+                const getBadgeColors = (type: GLRuleSetType) => {
+                  switch (type) {
+                    case 'revenue':
+                      return {
+                        bg: 'var(--color-success-50)',
+                        dot: 'var(--color-success-500)',
+                        text: 'var(--color-success-700)',
+                      };
+                    case 'commission':
+                      return {
+                        bg: 'var(--color-warning-50)',
+                        dot: 'var(--color-warning-500)',
+                        text: 'var(--color-warning-700)',
+                      };
+                    case 'cancellation_fee':
+                      return {
+                        bg: 'var(--color-primary-50)',
+                        dot: 'var(--color-primary-500)',
+                        text: 'var(--color-primary-700)',
+                      };
+                  }
+                };
+                const colors = getBadgeColors(determinedType);
+                return (
+                  <div
+                    style={{
+                      marginBottom: 'var(--spacing-4)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-2)',
+                      padding: 'var(--spacing-2) var(--spacing-3)',
+                      backgroundColor: colors.bg,
+                      borderRadius: 'var(--radius-md)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: colors.dot,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 'var(--text-sm)',
+                        fontWeight: 'var(--font-weight-medium)',
+                        color: colors.text,
+                      }}
+                    >
+                      {RULE_SET_TYPE_NAMES[determinedType]} Rules
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Error Message */}
               {error && (
@@ -384,6 +405,7 @@ export function AddRuleSetModal({
                     className="input"
                     autoFocus
                     disabled={loading}
+                    {...inputProps}
                   />
                 </div>
 
@@ -411,6 +433,7 @@ export function AddRuleSetModal({
                     onChange={(e) => setStartDate(e.target.value)}
                     className="input"
                     disabled={loading}
+                    {...inputProps}
                   />
                 </div>
 
@@ -438,6 +461,7 @@ export function AddRuleSetModal({
                     onChange={(e) => setEndDate(e.target.value)}
                     className="input"
                     disabled={loading}
+                    {...inputProps}
                   />
                 </div>
 
@@ -469,6 +493,7 @@ export function AddRuleSetModal({
                       }
                       className="input"
                       disabled={loading}
+                      {...inputProps}
                     >
                       <option value="">Don't copy rules (start empty)</option>
                       {copyableRuleSets.map((rs) => (
@@ -505,18 +530,20 @@ export function AddRuleSetModal({
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={loading}
-                    aria-busy={loading}
-                  >
-                    {loading
-                      ? 'Saving...'
-                      : ruleSet
-                      ? 'Update Rule Set'
-                      : 'Create Rule Set'}
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      disabled={loading}
+                      aria-busy={loading}
+                    >
+                      {loading
+                        ? 'Saving...'
+                        : ruleSet
+                        ? 'Update Rule Set'
+                        : 'Create Rule Set'}
+                    </button>
+                  )}
                 </div>
               </form>
             </motion.div>

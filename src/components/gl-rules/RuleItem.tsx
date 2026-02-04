@@ -25,6 +25,7 @@ interface RuleItemProps {
   onEdit: () => void;
   onDelete: () => void;
   disabled?: boolean; // For loading states
+  canEdit?: boolean; // Permissions-based edit control
 }
 
 // Map rule type to icon component
@@ -43,6 +44,7 @@ export function RuleItem({
   onEdit,
   onDelete,
   disabled = false,
+  canEdit = true,
 }: RuleItemProps) {
   const Icon = RULE_ICONS[rule.rule_type];
   const isDefaultRule = rule.rule_type === 'default';
@@ -129,59 +131,61 @@ export function RuleItem({
         </div>
 
         {/* Action buttons */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-          }}
-        >
-          <button
-            className="btn-secondary"
-            onClick={onEdit}
-            disabled={disabled}
-            aria-label={`Edit ${RULE_TYPE_NAMES[rule.rule_type]}`}
+        {canEdit && (
+          <div
             style={{
-              padding: 'var(--spacing-1) var(--spacing-2)',
-              fontSize: 'var(--text-sm)',
-              height: '32px',
               display: 'flex',
               alignItems: 'center',
-              gap: 'var(--spacing-1)',
+              gap: 'var(--spacing-2)',
             }}
           >
-            <Edit2 size={14} aria-hidden="true" />
-            Edit
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={onDelete}
-            disabled={disabled || isDefaultRule}
-            aria-label={
-              isDefaultRule
-                ? 'Cannot delete default rule'
-                : `Delete ${RULE_TYPE_NAMES[rule.rule_type]}`
-            }
-            title={
-              isDefaultRule
-                ? 'Default rule cannot be deleted'
-                : undefined
-            }
-            style={{
-              padding: 'var(--spacing-1) var(--spacing-2)',
-              fontSize: 'var(--text-sm)',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-1)',
-              opacity: isDefaultRule ? 0.5 : 1,
-              cursor: isDefaultRule ? 'not-allowed' : undefined,
-            }}
-          >
-            <Trash2 size={14} aria-hidden="true" />
-            Delete
-          </button>
-        </div>
+            <button
+              className="btn-secondary"
+              onClick={onEdit}
+              disabled={disabled}
+              aria-label={`Edit ${RULE_TYPE_NAMES[rule.rule_type]}`}
+              style={{
+                padding: 'var(--spacing-1) var(--spacing-2)',
+                fontSize: 'var(--text-sm)',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-1)',
+              }}
+            >
+              <Edit2 size={14} aria-hidden="true" />
+              Edit
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={onDelete}
+              disabled={disabled || isDefaultRule}
+              aria-label={
+                isDefaultRule
+                  ? 'Cannot delete default rule'
+                  : `Delete ${RULE_TYPE_NAMES[rule.rule_type]}`
+              }
+              title={
+                isDefaultRule
+                  ? 'Default rule cannot be deleted'
+                  : undefined
+              }
+              style={{
+                padding: 'var(--spacing-1) var(--spacing-2)',
+                fontSize: 'var(--text-sm)',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-1)',
+                opacity: isDefaultRule ? 0.5 : 1,
+                cursor: isDefaultRule ? 'not-allowed' : undefined,
+              }}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
