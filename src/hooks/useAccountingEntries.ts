@@ -81,6 +81,7 @@ interface RawAccountingEntry {
   recognised_at_local: string | null;
   association_type: string | null;
   association_id: number | null;
+  batch_run_id: number | null;
   deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -131,6 +132,7 @@ function transformEntry(raw: RawAccountingEntry): AccountingEntry {
     deleted: raw.deleted,
     created_at: raw.created_at,
     updated_at: raw.updated_at,
+    batch_run_id: raw.batch_run_id,
   };
 }
 
@@ -225,6 +227,7 @@ export function useAccountingEntries() {
           recognised_at_local
           association_type
           association_id
+          batch_run_id
           deleted
           created_at
           updated_at
@@ -301,32 +304,42 @@ export function useAccountingEntries() {
   }, [query, buildWhereClause, filters]);
 
   /**
+   * Build a where clause string for summary queries.
+   * Combines date range into a single created_at object to avoid duplicate keys.
+   */
+  const buildSummaryWhere = useCallback((
+    currentFilters: AccountingEntriesFilters,
+    extraConditions: string[] = []
+  ): string => {
+    const conditions: string[] = ['deleted: { _eq: false }'];
+
+    // Combine date range into a single created_at object
+    if (currentFilters.startDate && currentFilters.endDate) {
+      conditions.push(`created_at: { _gte: "${currentFilters.startDate}T00:00:00", _lte: "${currentFilters.endDate}T23:59:59" }`);
+    } else if (currentFilters.startDate) {
+      conditions.push(`created_at: { _gte: "${currentFilters.startDate}T00:00:00" }`);
+    } else if (currentFilters.endDate) {
+      conditions.push(`created_at: { _lte: "${currentFilters.endDate}T23:59:59" }`);
+    }
+
+    if (currentFilters.accountId) {
+      conditions.push(`account_id: { _eq: ${currentFilters.accountId} }`);
+    }
+
+    conditions.push(...extraConditions);
+    return `{ ${conditions.join(', ')} }`;
+  }, []);
+
+  /**
    * Fetch summary statistics for the current filters
    */
   const fetchSummary = useCallback(async (
     currentFilters: AccountingEntriesFilters = filters
   ) => {
-    // Build base where clause (without status filter for aggregate)
-    const baseConditions: string[] = ['deleted: { _eq: false }'];
-    if (currentFilters.startDate) {
-      baseConditions.push(`created_at: { _gte: "${currentFilters.startDate}T00:00:00" }`);
-    }
-    if (currentFilters.endDate) {
-      baseConditions.push(`created_at: { _lte: "${currentFilters.endDate}T23:59:59" }`);
-    }
-    if (currentFilters.accountId) {
-      baseConditions.push(`account_id: { _eq: ${currentFilters.accountId} }`);
-    }
-    const baseWhere = `{ ${baseConditions.join(', ')} }`;
-
-    // Pending where clause
-    const pendingWhere = `{ ${baseConditions.join(', ')}, recognised_at: { _is_null: true } }`;
-
-    // Recognized where clause (positive amount, not null recognised_at)
-    const recognizedWhere = `{ ${baseConditions.join(', ')}, recognised_at: { _is_null: false }, amount: { _gt: "0" } }`;
-
-    // Reversal where clause (negative amount, not null recognised_at)
-    const reversalWhere = `{ ${baseConditions.join(', ')}, recognised_at: { _is_null: false }, amount: { _lt: "0" } }`;
+    const baseWhere = buildSummaryWhere(currentFilters);
+    const pendingWhere = buildSummaryWhere(currentFilters, ['recognised_at: { _is_null: true }']);
+    const recognizedWhere = buildSummaryWhere(currentFilters, ['recognised_at: { _is_null: false }', 'amount: { _gt: "0" }']);
+    const reversalWhere = buildSummaryWhere(currentFilters, ['recognised_at: { _is_null: false }', 'amount: { _lt: "0" }']);
 
     const q = `
       query GetAccountingEntriesSummary {
@@ -385,7 +398,7 @@ export function useAccountingEntries() {
       // Don't throw - summary is supplementary
       return summary;
     }
-  }, [query, filters, summary]);
+  }, [query, buildSummaryWhere, filters, summary]);
 
   /**
    * Update filters and refetch

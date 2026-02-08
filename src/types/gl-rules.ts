@@ -299,6 +299,8 @@ export interface AccountingEntry {
   booking_ref?: string;
   /** Travel date (joined via reservation -> service) */
   travel_date?: string;
+  /** Batch run ID that created this entry */
+  batch_run_id?: number | null;
 }
 
 // ============================================================================
@@ -310,6 +312,21 @@ export interface AccountingEntry {
  * Note: The actual tables (sales_batch_runs, payment_batch_runs) only store
  * basic metadata. Detailed processing stats are in sales_batch_job_initiations.notes
  */
+/**
+ * Export status derived from exported_at and posted_at columns.
+ * Pending = never exported, Exported = file downloaded, Posted = confirmed in accounting system.
+ */
+export type ExportStatus = 'pending' | 'exported' | 'posted';
+
+/**
+ * Derive the export status from the timestamp columns
+ */
+export function getExportStatus(exportedAt: string | null | undefined, postedAt: string | null | undefined): ExportStatus {
+  if (postedAt) return 'posted';
+  if (exportedAt) return 'exported';
+  return 'pending';
+}
+
 export interface GLBatchRun {
   /** Unique identifier */
   id: number;
@@ -323,6 +340,61 @@ export interface GLBatchRun {
   updated_at: string;
   /** Computed status - always 'completed' since records only exist for successful runs */
   status?: 'completed';
+  /** Number of accounting entries in this batch (from API aggregate) */
+  entry_count?: number;
+  /** Net amount of all entries in this batch (from API aggregate) */
+  net_amount?: number;
+  /** Number of reversal entries in this batch (from API aggregate) */
+  reversal_count?: number;
+  /** When the batch was first exported (null = never exported) */
+  exported_at?: string | null;
+  /** User ID who first exported the batch */
+  exported_by?: string | null;
+  /** When the batch was marked as posted to accounting system (null = not posted) */
+  posted_at?: string | null;
+  /** User ID who marked the batch as posted */
+  posted_by?: string | null;
+}
+
+/**
+ * A single entry within a batch run, with booking reference resolved
+ */
+export interface BatchEntry {
+  id: number;
+  association_type: string;
+  association_id: number;
+  account_id: number;
+  account_name: string;
+  account_external_id: string;
+  amount: number;
+  recognised_at: string | null;
+  recognised_at_local: string | null;
+  created_at: string;
+  booking_reference: string | null;
+  booking_id: number | null;
+  is_reversal: boolean;
+}
+
+/**
+ * Response from batch entries endpoint
+ */
+export interface BatchEntriesResponse {
+  data: BatchEntry[];
+  summary: {
+    total_entries: number;
+    total_debit: number;
+    total_credit: number;
+    net_amount: number;
+    reversal_count: number;
+  };
+  batch_run: {
+    id: number;
+    start_date: string;
+    end_date: string;
+    created_at: string;
+    updated_at: string;
+  };
+  pagination: PaginationInfo;
 }
 
 /**
@@ -464,6 +536,10 @@ export interface InvoiceBatch {
   invoice_count?: number;
   /** Total amount of all invoices (computed from joined data) */
   total_amount?: number;
+  /** When the batch was marked as posted to accounting system (null = not posted) */
+  posted_at?: string | null;
+  /** User ID who marked the batch as posted */
+  posted_by?: string | null;
 }
 
 /**

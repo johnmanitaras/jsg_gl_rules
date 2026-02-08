@@ -24,6 +24,9 @@ import {
   Calendar,
   Filter,
   RefreshCw,
+  Download,
+  Hash,
+  ExternalLink,
 } from 'lucide-react';
 import { DatePicker } from '@jetsetgo/shared-components';
 import {
@@ -40,6 +43,8 @@ import {
 interface AccountingEntriesTabProps {
   /** Available GL accounts for filtering */
   accounts: Account[];
+  /** Callback to navigate to the GL Batch Runs tab with a specific batch highlighted */
+  onNavigateToBatch?: (batchId: number) => void;
 }
 
 /**
@@ -266,9 +271,11 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 function EntryRow({
   entry,
   index,
+  onNavigateToBatch,
 }: {
   entry: AccountingEntry;
   index: number;
+  onNavigateToBatch?: (batchId: number) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -368,28 +375,42 @@ function EntryRow({
                       className="text-xs font-medium mb-1"
                       style={{ color: 'var(--color-text-muted)' }}
                     >
-                      Entry ID
+                      Batch Run #
                     </p>
-                    <p
-                      className="text-sm font-mono"
-                      style={{ color: 'var(--color-text)' }}
-                    >
-                      #{entry.id}
-                    </p>
+                    {entry.batch_run_id ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigateToBatch?.(entry.batch_run_id!);
+                        }}
+                        className="text-sm font-mono inline-flex items-center gap-1 hover:underline"
+                        style={{ color: 'var(--color-primary-600)' }}
+                      >
+                        <Hash size={12} />
+                        {entry.batch_run_id}
+                        <ExternalLink size={10} />
+                      </button>
+                    ) : (
+                      <p
+                        className="text-sm"
+                        style={{ color: 'var(--color-text-muted)' }}
+                      >
+                        —
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p
                       className="text-xs font-medium mb-1"
                       style={{ color: 'var(--color-text-muted)' }}
                     >
-                      Association
+                      Booking Reference
                     </p>
                     <p
                       className="text-sm"
-                      style={{ color: 'var(--color-text)' }}
+                      style={{ color: entry.booking_ref ? 'var(--color-text)' : 'var(--color-text-muted)' }}
                     >
-                      {entry.association_type || '-'}
-                      {entry.association_id && ` #${entry.association_id}`}
+                      {entry.booking_ref || '—'}
                     </p>
                   </div>
                   <div>
@@ -548,7 +569,30 @@ function Pagination({
   );
 }
 
-export function AccountingEntriesTab({ accounts }: AccountingEntriesTabProps) {
+/**
+ * Generate CSV content from accounting entries
+ */
+function generateEntriesCsv(entries: AccountingEntry[]): string {
+  const headers = ['Date', 'GL Account', 'Account Code', 'Status', 'Debit', 'Credit', 'Booking Ref', 'Batch Run #'];
+  const rows = entries.map((entry) => {
+    const isDebit = entry.amount < 0;
+    const debitAmount = isDebit ? Math.abs(entry.amount).toFixed(2) : '';
+    const creditAmount = !isDebit && entry.amount > 0 ? entry.amount.toFixed(2) : '';
+    return [
+      entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-US') : '',
+      entry.account_name || '',
+      entry.account_external_id || '',
+      entry.status,
+      debitAmount,
+      creditAmount,
+      entry.booking_ref || '',
+      entry.batch_run_id ? entry.batch_run_id.toString() : '',
+    ].map((v) => `"${v}"`).join(',');
+  });
+  return [headers.join(','), ...rows].join('\n');
+}
+
+export function AccountingEntriesTab({ accounts, onNavigateToBatch }: AccountingEntriesTabProps) {
   const {
     entries,
     summary,
@@ -604,6 +648,21 @@ export function AccountingEntriesTab({ accounts }: AccountingEntriesTabProps) {
       fetchSummary(filters),
     ]);
   }, [fetchEntries, fetchSummary, filters, pagination.page, pagination.page_size]);
+
+  // Handle CSV export
+  const handleCsvExport = useCallback(() => {
+    if (entries.length === 0) return;
+    const csv = generateEntriesCsv(entries);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `accounting-entries-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }, [entries]);
 
   // Check if filters are active
   const hasActiveFilters =
@@ -772,6 +831,18 @@ export function AccountingEntriesTab({ accounts }: AccountingEntriesTabProps) {
             </button>
           )}
 
+          {/* CSV Export Button */}
+          <button
+            onClick={handleCsvExport}
+            disabled={entries.length === 0}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ color: 'var(--color-text-secondary)' }}
+            title="Export current entries to CSV"
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
           {/* Refresh Button */}
           <button
             onClick={handleRefresh}
@@ -871,7 +942,7 @@ export function AccountingEntriesTab({ accounts }: AccountingEntriesTabProps) {
             </thead>
             <tbody>
               {entries.map((entry, index) => (
-                <EntryRow key={entry.id} entry={entry} index={index} />
+                <EntryRow key={entry.id} entry={entry} index={index} onNavigateToBatch={onNavigateToBatch} />
               ))}
             </tbody>
           </table>

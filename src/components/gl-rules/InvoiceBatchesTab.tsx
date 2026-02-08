@@ -21,11 +21,14 @@ import {
   X,
   Calendar,
   Filter,
+  CheckCircle,
 } from 'lucide-react';
 import { DatePicker } from '@jetsetgo/shared-components';
 import { useInvoiceBatches } from '../../hooks/useInvoiceBatches';
-import { InvoiceBatch } from '../../types/gl-rules';
+import { useBatchExportStatus } from '../../hooks/useBatchExportStatus';
+import { InvoiceBatch, getExportStatus } from '../../types/gl-rules';
 import { CreateInvoiceBatchModal } from './CreateInvoiceBatchModal';
+import { StatusActionDropdown } from './StatusActionDropdown';
 import { Toast } from '../common/Toast';
 
 interface InvoiceBatchesTabProps {
@@ -50,25 +53,6 @@ function formatDate(dateString: string | null): string {
   }
 }
 
-/**
- * Format a datetime string for display
- */
-function formatDateTime(dateString: string | null): string {
-  if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return dateString;
-  }
-}
 
 export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
   const navigate = useNavigate();
@@ -140,8 +124,40 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
 
   // Calculate summary stats
   const totalBatches = pagination?.total_items ?? 0;
-  const exportedCount = batches.filter((b) => b.exported_at !== null).length;
+  const postedCount = batches.filter((b) => b.posted_at).length;
+  const exportedCount = batches.filter((b) => b.exported_at !== null && !b.posted_at).length;
   const pendingCount = batches.filter((b) => b.exported_at === null).length;
+
+  // Batch export status management
+  const { markAsExported, markAsPosted, resetToPending, resetToExported, error: statusError } = useBatchExportStatus();
+
+  const handleStatusAction = async (batchId: number, action: string): Promise<boolean> => {
+    let ok = false;
+    switch (action) {
+      case 'mark-exported':
+        ok = await markAsExported(batchId, 'invoice_batches');
+        break;
+      case 'mark-posted':
+        ok = await markAsPosted(batchId, 'invoice_batches');
+        break;
+      case 'reset-pending':
+        ok = await resetToPending(batchId, 'invoice_batches');
+        break;
+      case 'reset-exported':
+        ok = await resetToExported(batchId, 'invoice_batches');
+        break;
+    }
+    if (ok) {
+      const messages: Record<string, string> = {
+        'mark-exported': 'Batch marked as exported',
+        'mark-posted': 'Batch marked as posted',
+        'reset-pending': 'Batch status reset to pending',
+        'reset-exported': 'Batch status reset to exported',
+      };
+      showToast(messages[action] || 'Status updated', action.startsWith('reset') ? 'info' : 'success');
+    }
+    return ok;
+  };
 
   // Handle status filter change
   const handleStatusChange = (status: 'exported' | 'pending' | null) => {
@@ -302,7 +318,7 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Batches */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -343,7 +359,7 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
           </div>
         </motion.div>
 
-        {/* Exported */}
+        {/* Pending */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -354,11 +370,51 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
           <div className="flex items-center gap-3">
             <div
               className="p-3 rounded-lg"
-              style={{ backgroundColor: 'var(--color-success-50)' }}
+              style={{ backgroundColor: 'var(--color-neutral-100)' }}
+            >
+              <Clock
+                size={24}
+                style={{ color: 'var(--color-neutral-500)' }}
+              />
+            </div>
+            <div>
+              <p
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                Pending
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--text-2xl)',
+                  fontWeight: 'var(--font-weight-bold)',
+                  color: 'var(--color-neutral-600)',
+                }}
+              >
+                {pendingCount}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Exported */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="card"
+          style={{ padding: 'var(--spacing-4)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="p-3 rounded-lg"
+              style={{ backgroundColor: 'var(--color-primary-50)' }}
             >
               <FileCheck
                 size={24}
-                style={{ color: 'var(--color-success-600)' }}
+                style={{ color: 'var(--color-primary-600)' }}
               />
             </div>
             <div>
@@ -374,7 +430,7 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
                 style={{
                   fontSize: 'var(--text-2xl)',
                   fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--color-success-600)',
+                  color: 'var(--color-primary-600)',
                 }}
               >
                 {exportedCount}
@@ -383,22 +439,22 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
           </div>
         </motion.div>
 
-        {/* Pending Export */}
+        {/* Posted */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="card"
           style={{ padding: 'var(--spacing-4)' }}
         >
           <div className="flex items-center gap-3">
             <div
               className="p-3 rounded-lg"
-              style={{ backgroundColor: 'var(--color-warning-50)' }}
+              style={{ backgroundColor: 'var(--color-success-50)' }}
             >
-              <Clock
+              <CheckCircle
                 size={24}
-                style={{ color: 'var(--color-warning-600)' }}
+                style={{ color: 'var(--color-success-600)' }}
               />
             </div>
             <div>
@@ -408,16 +464,16 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
                   color: 'var(--color-text-secondary)',
                 }}
               >
-                Pending Export
+                Posted
               </p>
               <p
                 style={{
                   fontSize: 'var(--text-2xl)',
                   fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--color-warning-600)',
+                  color: 'var(--color-success-600)',
                 }}
               >
-                {pendingCount}
+                {postedCount}
               </p>
             </div>
           </div>
@@ -754,20 +810,41 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
                       fontSize: 'var(--text-sm)',
                     }}
                   >
-                    {batch.exported_at ? (
-                      <span
-                        className="inline-flex items-center gap-1"
-                        style={{ color: 'var(--color-success-600)' }}
-                      >
-                        <FileCheck size={14} />
-                        {formatDateTime(batch.exported_at)}
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-                    )}
+                    {(() => {
+                      const status = getExportStatus(batch.exported_at, batch.posted_at);
+                      const badgeConfig = {
+                        pending: {
+                          bg: 'var(--color-neutral-100)',
+                          color: 'var(--color-neutral-600)',
+                          icon: <Clock size={12} style={{ color: 'var(--color-neutral-500)' }} />,
+                          label: 'Pending',
+                        },
+                        exported: {
+                          bg: 'var(--color-primary-50)',
+                          color: 'var(--color-primary-700)',
+                          icon: <FileCheck size={12} style={{ color: 'var(--color-primary-500)' }} />,
+                          label: 'Exported',
+                        },
+                        posted: {
+                          bg: 'var(--color-success-50)',
+                          color: 'var(--color-success-700)',
+                          icon: <CheckCircle size={12} style={{ color: 'var(--color-success-500)' }} />,
+                          label: 'Posted',
+                        },
+                      }[status];
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: badgeConfig.bg, color: badgeConfig.color }}
+                        >
+                          {badgeConfig.icon}
+                          {badgeConfig.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end items-center gap-2">
                       <button
                         onClick={() => handleViewBatch(batch)}
                         className="btn-ghost flex items-center gap-1 px-3 py-1"
@@ -779,6 +856,11 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
                         <Eye size={16} />
                         View
                       </button>
+                      <StatusActionDropdown
+                        status={getExportStatus(batch.exported_at, batch.posted_at)}
+                        onAction={(action) => handleStatusAction(batch.id, action)}
+                        onStatusChanged={refetch}
+                      />
                     </div>
                   </td>
                 </motion.tr>
@@ -835,6 +917,23 @@ export function InvoiceBatchesTab({ clientFilter }: InvoiceBatchesTabProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Status error */}
+      {statusError && (
+        <div
+          className="card"
+          style={{
+            padding: 'var(--spacing-4)',
+            backgroundColor: 'var(--color-error-50)',
+            borderColor: 'var(--color-error-200)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <AlertCircle size={20} style={{ color: 'var(--color-error-500)' }} />
+            <p style={{ color: 'var(--color-error-700)' }}>{statusError}</p>
+          </div>
         </div>
       )}
 

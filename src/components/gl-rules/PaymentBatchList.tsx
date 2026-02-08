@@ -1,12 +1,14 @@
 /**
  * PaymentBatchList Component
  *
- * Displays a list of payment batch runs with filtering and pagination.
+ * Displays a list of payment batch runs with filtering, pagination, and expandable rows.
  * Shows batch run history from the GL payment surcharge batch processing system.
  *
  * Features:
  * - Date range filter
- * - Paginated data table
+ * - Paginated data table with entry_count and net_amount columns
+ * - Expandable rows showing batch entries with booking references
+ * - Journal export from expanded rows
  * - Loading skeleton animation
  * - Empty state handling
  */
@@ -18,15 +20,30 @@ import {
   RefreshCw,
   AlertCircle,
   CreditCard,
-  CheckCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  Download,
+  RotateCcw,
 } from 'lucide-react';
 import { DatePicker } from '@jetsetgo/shared-components';
 import { useGLBatchRuns, GLBatchRunsFilters } from '../../hooks/useGLBatchRuns';
-import { GLBatchRun, PaginationInfo } from '../../types/gl-rules';
+import { useGLBatchEntries } from '../../hooks/useGLBatchEntries';
+import { useJournalExport } from '../../hooks/useJournalExport';
+import { useBatchExportStatus } from '../../hooks/useBatchExportStatus';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { StatusActionDropdown } from './StatusActionDropdown';
+import {
+  GLBatchRun,
+  PaginationInfo,
+  BatchEntry,
+  ExportFormat,
+  EXPORT_FORMATS,
+  EXPORT_FORMAT_NAMES,
+  getExportStatus,
+} from '../../types/gl-rules';
 
 interface PaymentBatchListProps {
   /** Callback when Run Catchup is triggered */
@@ -62,11 +79,15 @@ function formatDateTime(dateString: string | null): string {
 }
 
 /**
- * Format date for input field
+ * Format currency amount
  */
-function formatDateForInput(dateString: string | null): string {
-  if (!dateString) return '';
-  return dateString.split('T')[0];
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 /**
@@ -76,7 +97,6 @@ function TableSkeleton() {
   return (
     <div className="card overflow-hidden">
       <div className="animate-pulse">
-        {/* Header */}
         <div
           className="px-6 py-4"
           style={{
@@ -85,7 +105,7 @@ function TableSkeleton() {
           }}
         >
           <div className="flex gap-8">
-            {[80, 120, 120, 140].map((width, i) => (
+            {[40, 80, 120, 120, 80, 80, 100].map((width, i) => (
               <div
                 key={i}
                 className="h-4 rounded"
@@ -97,14 +117,13 @@ function TableSkeleton() {
             ))}
           </div>
         </div>
-        {/* Rows */}
         {[1, 2, 3, 4, 5].map((row) => (
           <div
             key={row}
             className="px-6 py-4 flex gap-8"
             style={{ borderBottom: '1px solid var(--color-border)' }}
           >
-            {[60, 100, 100, 120].map((width, col) => (
+            {[30, 60, 100, 100, 60, 60, 80].map((width, col) => (
               <motion.div
                 key={col}
                 className="h-4 rounded"
@@ -301,74 +320,402 @@ function PaginationButton({
 }
 
 /**
- * Status badge component - always shows completed since batch runs
- * only create records when they complete successfully
+ * Expanded batch entries sub-table with export and status management
  */
-function StatusBadge() {
+function BatchEntriesPanel({
+  run,
+  onStatusChanged,
+}: {
+  run: GLBatchRun;
+  onStatusChanged?: () => void;
+}) {
+  const batchId = run.id;
+  const exportStatus = getExportStatus(run.exported_at, run.posted_at);
+  const ENTRIES_PAGE_SIZE = 15;
+
+  const { entries, loading, error, summary, pagination: entriesPagination, fetchBatchEntries } = useGLBatchEntries();
+  const { exporting, error: exportError, exportJournal } = useJournalExport();
+  const { markAsExported, markAsPosted, resetToPending, resetToExported, error: statusError, getTableName, clearError } = useBatchExportStatus();
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('csv');
+  const [hasFetched, setHasFetched] = useState(false);
+  const [entriesPage, setEntriesPage] = useState(1);
+
+  // Re-export confirmation
+  const [showReexportConfirm, setShowReexportConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!hasFetched) {
+      fetchBatchEntries(batchId, 'payments', 1, ENTRIES_PAGE_SIZE).then(() => {
+        setHasFetched(true);
+      }).catch(() => {
+        setHasFetched(true);
+      });
+    }
+  }, [hasFetched]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleEntriesPageChange = (page: number) => {
+    setEntriesPage(page);
+    fetchBatchEntries(batchId, 'payments', page, ENTRIES_PAGE_SIZE);
+  };
+
+  const handleExport = async () => {
+    if (exportStatus !== 'pending') {
+      setShowReexportConfirm(true);
+      return;
+    }
+    const ok = await exportJournal(batchId, 'payments', selectedFormat);
+    if (ok) onStatusChanged?.();
+  };
+
+  const handleConfirmExport = async () => {
+    setShowReexportConfirm(false);
+    const ok = await exportJournal(batchId, 'payments', selectedFormat);
+    if (ok) onStatusChanged?.();
+  };
+
+  const handleStatusAction = async (action: string): Promise<boolean> => {
+    const table = getTableName('payments');
+    switch (action) {
+      case 'mark-exported':
+        return markAsExported(batchId, table);
+      case 'mark-posted':
+        return markAsPosted(batchId, table);
+      case 'reset-pending':
+        return resetToPending(batchId, table);
+      case 'reset-exported':
+        return resetToExported(batchId, table);
+      default:
+        return false;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearError();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading && !hasFetched) {
+    return (
+      <div className="px-8 py-6 flex items-center justify-center gap-2">
+        <div
+          className="h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"
+          style={{ color: 'var(--color-primary-600)' }}
+        />
+        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Loading entries...
+        </span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="px-8 py-4 flex items-center gap-2">
+        <AlertCircle size={16} style={{ color: 'var(--color-error-500)' }} />
+        <span className="text-sm" style={{ color: 'var(--color-error-600)' }}>{error}</span>
+      </div>
+    );
+  }
+
   return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-      style={{
-        backgroundColor: 'var(--color-success-50)',
-        color: 'var(--color-success-700)',
-      }}
-    >
-      <CheckCircle size={12} style={{ color: 'var(--color-success-500)' }} />
-      Completed
-    </span>
+    <div className="px-8 py-4 space-y-4">
+      {/* Summary row */}
+      {summary && (
+        <div className="flex items-center gap-6 text-sm">
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            {summary.total_entries} entries
+          </span>
+          <span style={{ color: 'var(--color-success-600)' }}>
+            Debit: {formatCurrency(summary.total_debit)}
+          </span>
+          <span style={{ color: 'var(--color-error-600)' }}>
+            Credit: {formatCurrency(summary.total_credit)}
+          </span>
+          <span style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text)' }}>
+            Net: {formatCurrency(summary.net_amount)}
+          </span>
+        </div>
+      )}
+
+      {/* Entries sub-table */}
+      {entries.length > 0 ? (
+        <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+          <table className="w-full">
+            <thead>
+              <tr style={{ backgroundColor: 'var(--color-neutral-100)' }}>
+                <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Account</th>
+                <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Booking Ref</th>
+                <th className="text-right px-3 py-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>Amount</th>
+                <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)', width: '80px' }}>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry: BatchEntry) => (
+                <tr
+                  key={entry.id}
+                  style={{ borderTop: '1px solid var(--color-border)' }}
+                  className="hover:bg-white transition-colors"
+                >
+                  <td className="px-3 py-2 text-sm" style={{ color: 'var(--color-text)' }}>
+                    {entry.account_name}
+                    <span className="ml-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      ({entry.account_external_id})
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-sm" style={{ color: entry.booking_reference ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                    {entry.booking_reference || '—'}
+                  </td>
+                  <td className="px-3 py-2 text-sm text-right font-mono" style={{
+                    color: entry.amount >= 0 ? 'var(--color-success-600)' : 'var(--color-error-600)',
+                  }}>
+                    {formatCurrency(entry.amount)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {entry.is_reversal && (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+                        style={{
+                          backgroundColor: 'var(--color-warning-50)',
+                          color: 'var(--color-warning-700)',
+                        }}
+                      >
+                        <RotateCcw size={10} />
+                        Reversal
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Entries pagination */}
+          {entriesPagination.total_pages > 1 && (
+            <div
+              className="flex items-center justify-between px-3 py-2"
+              style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-neutral-50)' }}
+            >
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                {entriesPagination.total_items} entries
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleEntriesPageChange(entriesPage - 1)}
+                  disabled={entriesPage <= 1 || loading}
+                  className="p-1 rounded hover:bg-neutral-100 transition-colors disabled:opacity-40"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs px-2" style={{ color: 'var(--color-text-secondary)' }}>
+                  {entriesPage} / {entriesPagination.total_pages}
+                </span>
+                <button
+                  onClick={() => handleEntriesPageChange(entriesPage + 1)}
+                  disabled={entriesPage >= entriesPagination.total_pages || loading}
+                  className="p-1 rounded hover:bg-neutral-100 transition-colors disabled:opacity-40"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm py-2" style={{ color: 'var(--color-text-muted)' }}>
+          No entries in this batch
+        </p>
+      )}
+
+      {/* Export / Status errors */}
+      {(exportError || statusError) && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ backgroundColor: 'var(--color-error-50)' }}>
+          <AlertCircle size={14} style={{ color: 'var(--color-error-500)' }} />
+          <span className="text-xs" style={{ color: 'var(--color-error-700)' }}>{exportError || statusError}</span>
+        </div>
+      )}
+
+      {/* Export bar + Status dropdown */}
+      <div className="flex items-center gap-3 pt-2 flex-wrap" style={{ borderTop: '1px solid var(--color-border)' }}>
+        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          Export Journal:
+        </span>
+        <select
+          value={selectedFormat}
+          onChange={(e) => setSelectedFormat(e.target.value as ExportFormat)}
+          className="input py-1 px-2 text-sm"
+          style={{ minWidth: '100px' }}
+        >
+          {EXPORT_FORMATS.map((fmt) => (
+            <option key={fmt} value={fmt}>
+              {EXPORT_FORMAT_NAMES[fmt]}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
+          style={{
+            backgroundColor: 'var(--color-primary-600)',
+            color: 'white',
+          }}
+        >
+          <Download size={14} />
+          {exporting ? 'Exporting...' : 'Download'}
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Status dropdown */}
+        <StatusActionDropdown
+          status={exportStatus}
+          onAction={handleStatusAction}
+          onStatusChanged={onStatusChanged}
+        />
+      </div>
+
+      {/* Re-export confirmation */}
+      {showReexportConfirm && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setShowReexportConfirm(false)}
+          onConfirm={handleConfirmExport}
+          title="Re-export Journal"
+          message={`This batch was already exported${run.exported_at ? ` on ${formatDateTime(run.exported_at)}` : ''}. Downloading again will not change the export timestamp.\n\nContinue with download?`}
+          confirmLabel="Download"
+        />
+      )}
+    </div>
   );
 }
 
 /**
- * Batch run row component
+ * Batch run row component with expandable entries
  */
-function BatchRunRow({ run, index }: { run: GLBatchRun; index: number }) {
+function BatchRunRow({ run, index, onStatusChanged }: { run: GLBatchRun; index: number; onStatusChanged?: () => void }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const exportStatus = getExportStatus(run.exported_at, run.posted_at);
+  const { markAsExported, markAsPosted, resetToPending, resetToExported, getTableName } = useBatchExportStatus();
+
+  const handleStatusAction = async (action: string): Promise<boolean> => {
+    const table = getTableName('payments');
+    switch (action) {
+      case 'mark-exported':
+        return markAsExported(run.id, table);
+      case 'mark-posted':
+        return markAsPosted(run.id, table);
+      case 'reset-pending':
+        return resetToPending(run.id, table);
+      case 'reset-exported':
+        return resetToExported(run.id, table);
+      default:
+        return false;
+    }
+  };
+
   return (
-    <motion.tr
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.02 }}
-      className="hover:bg-neutral-50 transition-colors"
-      style={{ borderBottom: '1px solid var(--color-border)' }}
-    >
-      <td
-        className="px-6 py-4"
-        style={{
-          fontSize: 'var(--text-sm)',
-          fontWeight: 'var(--font-weight-semibold)',
-          color: 'var(--color-primary-600)',
-        }}
+    <>
+      <motion.tr
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, delay: index * 0.02 }}
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="cursor-pointer hover:bg-neutral-50 transition-colors"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
       >
-        #{run.id}
-      </td>
-      <td
-        className="px-6 py-4"
-        style={{
-          fontSize: 'var(--text-sm)',
-          color: 'var(--color-text)',
-        }}
-      >
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          {formatDate(run.start_date)}
-        </span>
-        <span style={{ color: 'var(--color-text-muted)', margin: '0 8px' }}>to</span>
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          {formatDate(run.end_date)}
-        </span>
-      </td>
-      <td
-        className="px-6 py-4"
-        style={{
-          fontSize: 'var(--text-sm)',
-          color: 'var(--color-text-secondary)',
-        }}
-      >
-        {formatDateTime(run.created_at)}
-      </td>
-      <td className="px-6 py-4">
-        <StatusBadge />
-      </td>
-    </motion.tr>
+        <td className="px-3 py-4">
+          <button
+            className="p-1 rounded hover:bg-neutral-100 transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        </td>
+        <td
+          className="px-4 py-4"
+          style={{
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--color-primary-600)',
+          }}
+        >
+          #{run.id}
+        </td>
+        <td
+          className="px-4 py-4"
+          style={{
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text)',
+          }}
+        >
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            {formatDate(run.start_date)}
+          </span>
+          <span style={{ color: 'var(--color-text-muted)', margin: '0 8px' }}>to</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            {formatDate(run.end_date)}
+          </span>
+        </td>
+        <td
+          className="px-4 py-4"
+          style={{
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          {formatDateTime(run.created_at)}
+        </td>
+        <td
+          className="px-4 py-4 text-right"
+          style={{
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text)',
+          }}
+        >
+          {run.entry_count != null ? run.entry_count : '—'}
+        </td>
+        <td
+          className="px-4 py-4 text-right font-mono"
+          style={{
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--font-weight-medium)',
+            color: run.net_amount != null && run.net_amount >= 0 ? 'var(--color-success-600)' : 'var(--color-error-600)',
+          }}
+        >
+          {run.net_amount != null ? formatCurrency(run.net_amount) : '—'}
+        </td>
+        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+          <StatusActionDropdown
+            status={exportStatus}
+            onAction={handleStatusAction}
+            onStatusChanged={onStatusChanged}
+          />
+        </td>
+      </motion.tr>
+
+      {/* Expanded entries panel */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.tr
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <td
+              colSpan={7}
+              style={{
+                backgroundColor: 'var(--color-neutral-50)',
+                borderBottom: '1px solid var(--color-border)',
+              }}
+            >
+              <BatchEntriesPanel run={run} onStatusChanged={onStatusChanged} />
+            </td>
+          </motion.tr>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -549,19 +896,20 @@ export function PaymentBatchList({ onRunCatchup }: PaymentBatchListProps) {
                   borderBottom: '1px solid var(--color-border)',
                 }}
               >
+                <th className="w-10 px-3 py-4" />
                 <th
-                  className="text-left px-6 py-4"
+                  className="text-left px-4 py-4"
                   style={{
                     fontSize: 'var(--text-sm)',
                     fontWeight: 'var(--font-weight-semibold)',
                     color: 'var(--color-text-secondary)',
-                    width: '100px',
+                    width: '90px',
                   }}
                 >
-                  Batch ID
+                  Batch #
                 </th>
                 <th
-                  className="text-left px-6 py-4"
+                  className="text-left px-4 py-4"
                   style={{
                     fontSize: 'var(--text-sm)',
                     fontWeight: 'var(--font-weight-semibold)',
@@ -571,7 +919,7 @@ export function PaymentBatchList({ onRunCatchup }: PaymentBatchListProps) {
                   Date Range
                 </th>
                 <th
-                  className="text-left px-6 py-4"
+                  className="text-left px-4 py-4"
                   style={{
                     fontSize: 'var(--text-sm)',
                     fontWeight: 'var(--font-weight-semibold)',
@@ -581,12 +929,34 @@ export function PaymentBatchList({ onRunCatchup }: PaymentBatchListProps) {
                   Run At
                 </th>
                 <th
-                  className="text-left px-6 py-4"
+                  className="text-right px-4 py-4"
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--color-text-secondary)',
+                    width: '80px',
+                  }}
+                >
+                  Entries
+                </th>
+                <th
+                  className="text-right px-4 py-4"
                   style={{
                     fontSize: 'var(--text-sm)',
                     fontWeight: 'var(--font-weight-semibold)',
                     color: 'var(--color-text-secondary)',
                     width: '120px',
+                  }}
+                >
+                  Net Amount
+                </th>
+                <th
+                  className="text-left px-4 py-4"
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--color-text-secondary)',
+                    width: '110px',
                   }}
                 >
                   Status
@@ -595,7 +965,7 @@ export function PaymentBatchList({ onRunCatchup }: PaymentBatchListProps) {
             </thead>
             <tbody>
               {batchRuns.map((run, index) => (
-                <BatchRunRow key={run.id} run={run} index={index} />
+                <BatchRunRow key={run.id} run={run} index={index} onStatusChanged={handleRefresh} />
               ))}
             </tbody>
           </table>
