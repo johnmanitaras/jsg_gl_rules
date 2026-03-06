@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Calculator, CreditCard, Plus, Search, AlertCircle, History, X, FileText, RefreshCw, Receipt } from 'lucide-react';
+import { BookOpen, Calculator, CreditCard, Plus, Search, AlertCircle, History, X, FileText, RefreshCw, Receipt, Wallet } from 'lucide-react';
 import { Timeline, AuditHistory } from '@jetsetgo/shared-components';
 import type { TimelineVersion, TimelineGap, TimelineLane } from '@jetsetgo/shared-components';
 import { useAuth } from '../hooks/useAuth';
@@ -27,8 +27,9 @@ import { SurchargeSettings } from '../components/gl-rules/SurchargeSettings';
 import { AccountingEntriesTab } from '../components/gl-rules/AccountingEntriesTab';
 import { GLBatchRunsTab } from '../components/gl-rules/GLBatchRunsTab';
 import { InvoiceBatchesTab } from '../components/gl-rules/InvoiceBatchesTab';
+import { BudgetsTab } from '../components/gl-rules/BudgetsTab';
 
-type TabId = 'accounts' | 'rules' | 'surcharge' | 'entries' | 'gl-batches' | 'invoices';
+type TabId = 'accounts' | 'rules' | 'surcharge' | 'entries' | 'gl-batches' | 'invoices' | 'budgets';
 
 export function GLRulesApp() {
   const { canEdit } = usePermissions();
@@ -324,6 +325,12 @@ export function GLRulesApp() {
       label: 'Manage Accounts',
       icon: BookOpen,
       description: 'Define GL account codes for revenue and commission allocation',
+    },
+    {
+      id: 'budgets' as TabId,
+      label: 'Budgets',
+      icon: Wallet,
+      description: 'Set monthly budget targets per GL account',
     },
     {
       id: 'rules' as TabId,
@@ -673,6 +680,13 @@ export function GLRulesApp() {
             >
               <InvoiceBatchesTab clientFilter={invoiceClientFilter} />
             </motion.div>
+          </div>
+        )}
+
+        {/* Budgets Tab */}
+        {activeTab === 'budgets' && (
+          <div className="container py-6">
+            <BudgetsTab accounts={accounts} accountsLoading={accountsLoading} />
           </div>
         )}
       </motion.div>

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { useGraphQL } from '../../hooks/useGraphQL';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
+import { getFirebaseAuth } from '../../lib/firebase';
 import { LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { UserInfo } from './components/UserInfo';
@@ -105,7 +105,7 @@ export function TestPage() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await signOut(getFirebaseAuth());
     } catch (err) {
       console.error('Failed to sign out:', err);
     }

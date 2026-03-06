@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { getFirebaseAuth } from '../lib/firebase';
 import { cn } from '../utils/cn';
 
 export function Login() {
@@ -18,7 +18,7 @@ export function Login() {
     setError('');
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
       navigate('/');
     } catch (err) {
       setError('Failed to log in');

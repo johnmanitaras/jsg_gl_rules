@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
+import {
+  Auth,
+  getAuth,
   onAuthStateChanged,
   setPersistence,
 } from 'firebase/auth';
@@ -16,16 +17,21 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+let _auth: Auth | null = null;
 
-// Configure auth persistence
-setPersistence(auth, AUTH_PERSISTENCE)
-  .then(() => console.log('Auth persistence configured'))
-  .catch(error => console.error('Failed to configure auth persistence:', error));
+export function getFirebaseAuth(): Auth {
+  if (!_auth) {
+    const app = initializeApp(firebaseConfig);
+    _auth = getAuth(app);
 
-// Listen for auth state changes and broadcast them
-onAuthStateChanged(auth, (user) => {
-  console.log('Auth state changed:', user ? `User ${user.email} logged in` : 'User logged out');
-  broadcastAuthState(user);
-});
+    setPersistence(_auth, AUTH_PERSISTENCE)
+      .then(() => console.log('Auth persistence configured'))
+      .catch(error => console.error('Failed to configure auth persistence:', error));
+
+    onAuthStateChanged(_auth, (user) => {
+      console.log('Auth state changed:', user ? `User ${user.email} logged in` : 'User logged out');
+      broadcastAuthState(user);
+    });
+  }
+  return _auth;
+}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { getFirebaseAuth } from '../lib/firebase';
 import { authChannel } from '../lib/broadcast';
 import { DEFAULT_TENANT } from '../lib/config';
 import { TenantInfo, GroupInfo } from '../types/auth';
@@ -64,7 +64,7 @@ export function AuthProvider({ children, token: propToken, dbName: propDbName, o
     if (embedded) {
       return token;
     } else {
-      return await auth.currentUser?.getIdToken() || null;
+      return await getFirebaseAuth().currentUser?.getIdToken() || null;
     }
   }, [embedded, token]);
 
@@ -86,7 +86,7 @@ export function AuthProvider({ children, token: propToken, dbName: propDbName, o
     // Skip Firebase auth if we're in embedded mode
     if (embedded) return;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (user) {
         const idTokenResult = await user.getIdTokenResult();
         const tenantClaim = idTokenResult.claims.tenant as TenantInfo;
