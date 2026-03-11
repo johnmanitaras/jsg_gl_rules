@@ -111,7 +111,7 @@
 /* Component styles */
 @layer components {
   .container {
-    @apply mx-auto px-6 max-w-7xl;
+    @apply mx-auto px-6 max-w-[1440px];
   }
 
   .btn-primary {
